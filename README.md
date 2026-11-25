@@ -59,9 +59,9 @@ crosstalk read antigravity current                     # last answer
 crosstalk ui                                           # open the chat room
 ```
 
-Each message starts with a header such as
-`[crosstalk · from claude 'billing refactor' · reply with: crosstalk send claude 'billing refactor' '<reply>']`,
-so the receiver always knows who wrote and how to answer.
+Each message starts with one plain line, for example
+`[crosstalk] From Codex, thread 'Fix login'. Reply with: crosstalk send codex 01a2… '<reply>'`,
+so the receiver knows who wrote, from which session, and how to answer.
 
 ## Commands
 
@@ -86,8 +86,8 @@ The skill defines four ways for agents to work together. You pick one in plain w
 
 | Role | Behaviour |
 |---|---|
-| Orchestrator | Splits the work, sends tasks with done-criteria, checks the results itself |
-| Worker | Does the task, reports the result and what it did not verify |
+| Orchestrator | Splits the work, sends tasks with done-criteria, checks the results, and answers the workers' questions by your rules |
+| Worker | Does the task, sends its questions and choices to the orchestrator instead of you, reports what it did not verify |
 | Peers | Discuss, challenge each other, agree on one answer |
 | Info | Answers the question or sends the data, nothing more |
 
@@ -144,6 +144,12 @@ extra. The agents themselves use their normal plans.
 
 **Does anything run in the background?** No. Commands run when an agent or you call them. `crosstalk ui`
 runs only while it is open.
+
+**Can the orchestrator decide for me?** It answers the workers' questions and choices by the rules you gave
+it: workers send those to the orchestrator instead of stopping on a question for you. Permission prompts are
+different: crosstalk never clicks Allow for you and does not get around Claude's held messages. If you do not
+want prompts, set each app's own permission mode (Claude auto or bypass, Antigravity Turbo, Codex full access).
+Deploys, payments, deletions, permission changes and secrets still come back to you.
 
 **What do idle, busy and waiting mean?** Idle: ready for a message. Busy: working; a Claude session reads your
 message after its current turn, Antigravity refuses until it is idle. Waiting: the agent asked you something

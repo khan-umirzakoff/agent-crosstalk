@@ -13,11 +13,12 @@ const { resolve } = await import('../lib/antigravity.js');
 const { checkRelay } = await import('../lib/claude.js');
 const { serve } = await import('../lib/ui.js');
 
-test('header tells the receiver how to reply to each kind of sender', () => {
-  assert.equal(core.header({ agent: 'claude', name: 'API review' }), `[crosstalk · from claude 'API review' · reply with: crosstalk send claude 'API review' '<reply>']`);
-  assert.match(core.header({ agent: 'antigravity', id: 'abc', name: 'abc' }), /reply with: crosstalk send antigravity abc '<reply>'\]$/);
-  assert.match(core.header({ agent: 'antigravity', id: null, name: 'Antigravity' }), /crosstalk send antigravity current/);
-  assert.match(core.header({ agent: 'terminal', name: 'terminal' }), /^\[crosstalk · from a terminal \(unverified\)/);
+test('header tells the receiver who wrote, from where, and how to reply', () => {
+  assert.equal(core.header({ agent: 'claude', name: 'API review' }), `[crosstalk] From Claude, session 'API review'. Reply with: crosstalk send claude 'API review' '<reply>'`);
+  assert.equal(core.header({ agent: 'codex', id: 'abc', name: 'Fix login' }), `[crosstalk] From Codex, thread 'Fix login'. Reply with: crosstalk send codex abc '<reply>'`);
+  assert.equal(core.header({ agent: 'antigravity', id: null, name: 'Antigravity' }), `[crosstalk] From Antigravity. Reply with: crosstalk send antigravity current '<reply>'`);
+  assert.match(core.header({ agent: 'terminal', name: 'terminal' }), /^\[crosstalk\] From a terminal \(sender not verified\)\. Reply with: crosstalk send user/);
+  assert.match(core.header({ agent: 'user', name: 'you' }), /^\[crosstalk\] From the user, in the crosstalk room\./);
 });
 
 test('a session name cannot inject shell code into the reply command', () => {
