@@ -16,6 +16,7 @@ const HELP = `crosstalk ${VERSION}: let Claude, Antigravity, Codex and you messa
   crosstalk send claude <session name> <text>    message an open Claude session
   crosstalk send antigravity <target> <text>     target: conversation id, its title, current or new
   crosstalk send codex <target> <text>           target: thread id, its title, current or new
+  crosstalk send --wait [sec] <app> <target> <text>  Antigravity/Codex: wait for the answer and print it
   crosstalk send user <text>                     post to the person watching \`crosstalk ui\`
   crosstalk read antigravity|codex [target]      last reply
   crosstalk status antigravity|codex [target]    idle, busy or waiting for the user
@@ -36,7 +37,7 @@ const SKILL_LINKS = [
 
 // Options are read until the message text starts, so text like "fix the --port flag" stays intact.
 function parse(argv) {
-  const opt = { from: null, port: 4477, n: 20, open: true };
+  const opt = { from: null, port: 4477, n: 20, open: true, wait: 0 };
   const words = [];
   const textStarts = () => words[0] === 'send' && words.length >= (words[1] === 'user' ? 2 : 3);
   for (let i = 0; i < argv.length; i++) {
@@ -49,6 +50,7 @@ function parse(argv) {
     else if (a === '--port') opt.port = Number(argv[++i]);
     else if (a === '-n') opt.n = Number(argv[++i]);
     else if (a === '--no-open') opt.open = false;
+    else if (a === '--wait') opt.wait = /^\d+$/.test(argv[i + 1] || '') ? Number(argv[++i]) : 900;
     else if (a === '-h' || a === '--help') return { opt, words: ['help'] };
     else if (a === '-v' || a === '--version') return { opt, words: ['version'] };
     else words.push(a);
@@ -84,8 +86,10 @@ async function main() {
       let text = rest.join(' ');
       if (text === '-') text = readStdin();
       if (!agent || (agent !== 'user' && !target) || !text) throw new Error('Usage: crosstalk send <claude|antigravity|codex|user> [target] <text>');
-      const to = await core.send(agent, target, text, core.whoami(opt.from));
+      const sent = await core.send(agent, target, text, core.whoami(opt.from), opt.wait > 0);
+      const { to } = sent;
       console.log(`sent to ${to.agent} ${JSON.stringify(clean(to.name))}${to.id ? ` (${to.id})` : ''}${to.status === 'busy' ? ': it is busy and reads it after its current turn' : ''}`);
+      if (opt.wait) console.log(`\n${clean(await core.waitReply(sent, opt.wait * 1000))}`);
       return;
     }
     case 'read':

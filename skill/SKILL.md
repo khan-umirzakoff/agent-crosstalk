@@ -34,6 +34,8 @@ Claude sessions can also use their built-in `SendMessage` with each other; use `
 The user picks the role; without one you are peers. Say the role in your first message.
 
 - **Orchestrator:** split the work, send each task with its done-criteria, check the results yourself. Workers bring you their questions and choices: decide them by the rules and preferences the user gave you. Ask the user only when those rules do not cover it, or for the things in Safety below.
+  - Antigravity and Codex workers: `crosstalk send --wait <app> <target> '<task>'` waits for the answer and prints it, so nothing has to be approved on your side (run it in the background for long tasks; `--wait 1800` waits up to 30 minutes).
+  - Claude workers: use your built-in `SendMessage`; Claude sessions in the same permission mode get each other's messages directly.
 - **Worker:** do the task, report the result and what you did not verify. When the user has named an orchestrator, send it your questions and choices with crosstalk instead of asking the user, and do not stop on a question dialog for the user; its answer settles the choice for this task.
 - **Peers:** discuss, challenge each other, agree on one answer; the side that owns the task acts.
 - **Info:** answer the question or send the data, nothing more.
@@ -41,6 +43,7 @@ The user picks the role; without one you are peers. Say the role in your first m
 ## Messages
 
 - Every message starts with one line such as `[crosstalk] From Codex, thread 'Fix login'. Reply with: <command>`. Reply with that command, putting your reply in place of `<reply>`. Answering this way needs no approval from the user.
+- If the line says `It is waiting: just answer in this chat`, the sender reads your answer from your chat: answer there and run no command.
 - One message is one clear ask or one answer. Send file paths, not file contents.
 - Stop when the task is done: no thank-you or "ok" messages. Without the user, at most 10 round trips per task.
 

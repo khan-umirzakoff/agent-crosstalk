@@ -80,6 +80,20 @@ so the receiver knows who wrote, from which session, and how to answer.
 
 Text `-` reads the message from stdin: `cat plan.md | crosstalk send antigravity current -`.
 
+## Orchestrating without approvals
+
+Let one Claude session lead and the others work, with nothing waiting for your click:
+
+```bash
+crosstalk send --wait codex 'API review' 'Review src/api for missing auth checks; list file:line findings'
+crosstalk send --wait 1800 antigravity new 'Build the settings page from docs/settings.md'
+```
+
+`--wait` types the task into the worker's chat, waits until the worker is idle again, and prints its answer to
+the orchestrator (the worker is told to just answer in its own chat). The answer never travels back as a message,
+so Claude has nothing to hold, whatever permission mode the orchestrator runs in. Claude workers talk to a Claude
+orchestrator with Claude's own `SendMessage`, which needs no approval between sessions in the same permission mode.
+
 ## Roles
 
 The skill defines four ways for agents to work together. You pick one in plain words; the default is peers.
@@ -129,9 +143,10 @@ Agents are told to stop when the task is done (no "thanks" ping-pong) and to mak
 from Claude, `crosstalk send claude` from Antigravity.
 
 **Why does Claude show "held — waiting for approval"?** Claude Code holds a message when the sending session
-runs in a different permission mode than the receiving one. crosstalk's relay runs in the default mode, so a
-receiving session in another mode (for example bypass) asks you to approve each message. This is Claude's
-safety check; crosstalk does not work around it.
+runs in a different permission mode than the receiving one, and crosstalk's relay runs in the default mode. A
+Claude session in bypass mode therefore asks you before it reads a message from Antigravity or Codex. This is
+Claude's safety check and crosstalk does not work around it; use `--wait` from the Claude side instead (see
+*Orchestrating without approvals*), so answers come back as command output and nothing is held.
 
 **Does it work with Codex?** Yes, with the Codex mode of the ChatGPT desktop app. `crosstalk open codex`
 restarts the app with a local debug port and switches it to Codex mode; crosstalk types into a Codex thread,
@@ -161,7 +176,6 @@ its `data-testid` attributes, which an update can change. Please open an issue.
 
 ## Roadmap
 
-- Wait for a reply: `crosstalk send --wait` that returns the answer to the caller.
 - More agents: Cursor, Windsurf, Gemini CLI, any app that exposes its chat to a local debug port.
 
 ## License

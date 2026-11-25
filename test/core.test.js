@@ -12,6 +12,7 @@ const log = await import('../lib/log.js');
 const { resolve } = await import('../lib/antigravity.js');
 const { checkRelay } = await import('../lib/claude.js');
 const { serve } = await import('../lib/ui.js');
+const { waitForReply } = await import('../lib/desktop.js');
 
 test('header tells the receiver who wrote, from where, and how to reply', () => {
   assert.equal(core.header({ agent: 'claude', name: 'API review' }), `[crosstalk] From Claude, session 'API review'. Reply with: crosstalk send claude 'API review' '<reply>'`);
@@ -19,6 +20,7 @@ test('header tells the receiver who wrote, from where, and how to reply', () => 
   assert.equal(core.header({ agent: 'antigravity', id: null, name: 'Antigravity' }), `[crosstalk] From Antigravity. Reply with: crosstalk send antigravity current '<reply>'`);
   assert.match(core.header({ agent: 'terminal', name: 'terminal' }), /^\[crosstalk\] From a terminal \(sender not verified\)\. Reply with: crosstalk send user/);
   assert.match(core.header({ agent: 'user', name: 'you' }), /^\[crosstalk\] From the user, in the crosstalk room\./);
+  assert.equal(core.header({ agent: 'claude', name: 'Lead' }, true), `[crosstalk] From Claude, session 'Lead'. It is waiting: just answer in this chat.`);
 });
 
 test('a session name cannot inject shell code into the reply command', () => {
@@ -31,7 +33,7 @@ test('--from is used only when it is a conversation id', () => {
 });
 
 test('sending to the room logs the message', async () => {
-  const to = await core.send('user', null, 'hi', { agent: 'claude', id: '1', name: 'A' });
+  const { to } = await core.send('user', null, 'hi', { agent: 'claude', id: '1', name: 'A' });
   assert.deepEqual(to, { agent: 'user', id: null, name: 'you' });
   assert.equal(log.readAll().at(-1).text, 'hi');
 });
@@ -82,4 +84,22 @@ test('the room refuses other hosts and requests without its token', async () => 
   } finally {
     server.close();
   }
+});
+
+test('--wait returns the new answer once the agent is idle again, and waits while it is off screen', async () => {
+  const frames = [
+    { id: 'other', status: 'idle' }, // the person looked at another conversation
+    { id: 'c1', status: 'busy' },
+    { id: 'c1', status: 'busy' },
+    { id: 'c1', status: 'idle' },
+  ];
+  const fake = { run: async (fn) => (fn === state ? frames.shift() || { id: 'c1', status: 'idle' } : 'new answer') };
+  const state = () => {};
+  const last = () => {};
+  const got = await waitForReply(fake, { id: 'c1', previous: 'old answer', pageState: state, pageLastReply: last, app: 'Codex', timeoutMs: 2000, intervalMs: 5 });
+  assert.equal(got.reply, 'new answer');
+  await assert.rejects(
+    waitForReply({ run: async () => ({ id: 'c1', status: 'waiting', name: 'T', note: "needs the user's approval" }) }, { id: 'c1', previous: '', pageState: state, pageLastReply: last, app: 'Codex', timeoutMs: 100, intervalMs: 5 }),
+    /user's call/,
+  );
 });
