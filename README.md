@@ -9,7 +9,8 @@ once in a small local chat room.
 - **Find and continue old sessions.** List the open Claude sessions and recent Antigravity conversations, pick one, keep going.
 - **Neutral roles.** Either side can be the orchestrator, the worker, a peer to argue with, or just a source of information.
 - **Knows who is free.** Every session shows as idle, busy or waiting for you, with the question it asked. crosstalk
-  never answers a question meant for you and never types into a chat where you have a draft.
+  never answers a question meant for you, and if you have an unsent draft it waits until you stop typing,
+  sends its message, then puts your draft back.
 - **One timeline.** `crosstalk ui` shows every message between agents in one chat view, and you can write into it too.
 - **Zero dependencies.** Node.js 22+, under 800 lines, MIT licensed. Nothing runs in the background.
 
@@ -110,8 +111,9 @@ Agents are told to stop when the task is done (no "thanks" ping-pong) and to mak
   header says "from the user". The skill tells agents to ask you before deploys, payments, deletions or
   permission changes, and never to send secrets. Session names are shell-quoted in reply commands, and
   `--from` must be a conversation id.
-- crosstalk does not switch Antigravity conversations or type while you have a draft on screen, does not send
-  while it sees the agent busy or waiting for you, and takes a lock so two senders never type at once.
+- crosstalk does not send while it sees the agent busy or waiting for you, and takes a lock so two senders never
+  type at once. An unsent draft in Antigravity is set aside after you stop typing for 2 seconds and put back
+  after the message is sent (as plain text: mentions and attachments in a draft are not kept).
 
 ## FAQ
 
