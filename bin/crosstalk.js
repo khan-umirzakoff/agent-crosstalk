@@ -4,20 +4,22 @@ import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as antigravity from '../lib/antigravity.js';
+import * as codex from '../lib/codex.js';
 import * as core from '../lib/core.js';
 import * as log from '../lib/log.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const VERSION = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
-const HELP = `crosstalk ${VERSION}: let Claude, Antigravity and you message each other, live, in each app's own window.
+const HELP = `crosstalk ${VERSION}: let Claude, Antigravity, Codex and you message each other, live, in each app's own window.
 
-  crosstalk list [claude|antigravity]            sessions you can message, and whether they are free
+  crosstalk list [claude|antigravity|codex]      sessions you can message, and whether they are free
   crosstalk send claude <session name> <text>    message an open Claude session
   crosstalk send antigravity <target> <text>     target: conversation id, its title, current or new
+  crosstalk send codex <target> <text>           target: thread id, its title, current or new
   crosstalk send user <text>                     post to the person watching \`crosstalk ui\`
-  crosstalk read antigravity [target]            last Antigravity reply
-  crosstalk status antigravity [target]          idle, busy or waiting for the user
-  crosstalk open antigravity                     restart Antigravity so crosstalk can reach it
+  crosstalk read antigravity|codex [target]      last reply
+  crosstalk status antigravity|codex [target]    idle, busy or waiting for the user
+  crosstalk open antigravity|codex               restart the app so crosstalk can reach it (Codex: in Codex mode)
   crosstalk ui [--port 4477] [--no-open]         chat room: every message in one timeline
   crosstalk log [-n 20]                          recent messages
   crosstalk whoami                               who crosstalk thinks is sending
@@ -81,25 +83,28 @@ async function main() {
       const target = agent === 'user' ? null : rest.shift();
       let text = rest.join(' ');
       if (text === '-') text = readStdin();
-      if (!agent || (agent !== 'user' && !target) || !text) throw new Error('Usage: crosstalk send <claude|antigravity|user> [target] <text>');
+      if (!agent || (agent !== 'user' && !target) || !text) throw new Error('Usage: crosstalk send <claude|antigravity|codex|user> [target] <text>');
       const to = await core.send(agent, target, text, core.whoami(opt.from));
       console.log(`sent to ${to.agent} ${JSON.stringify(clean(to.name))}${to.id ? ` (${to.id})` : ''}${to.status === 'busy' ? ': it is busy and reads it after its current turn' : ''}`);
       return;
     }
     case 'read':
     case 'status': {
-      if (args[0] !== 'antigravity') throw new Error(`Usage: crosstalk ${cmd} antigravity [target]`);
-      if (cmd === 'read') console.log(clean(await antigravity.read(args[1])) || '(no reply yet)');
+      const app = { antigravity, codex }[args[0]];
+      if (!app) throw new Error(`Usage: crosstalk ${cmd} antigravity|codex [target]`);
+      if (cmd === 'read') console.log(clean(await app.read(args[1])) || '(no reply yet)');
       else {
-        const s = await antigravity.status(args[1]);
+        const s = await app.status(args[1]);
         console.log(`${s.status} | ${clean(s.name)} | ${s.id || '(new)'}${s.note ? `\n${clean(s.note)}` : ''}`);
       }
       return;
     }
-    case 'open':
-      if (args[0] !== 'antigravity') throw new Error('Usage: crosstalk open antigravity');
-      console.log(await antigravity.open());
+    case 'open': {
+      const app = { antigravity, codex }[args[0]];
+      if (!app) throw new Error('Usage: crosstalk open antigravity|codex');
+      console.log(await app.open());
       return;
+    }
     case 'ui': {
       const { serve } = await import('../lib/ui.js');
       await serve(opt.port, opt.open);

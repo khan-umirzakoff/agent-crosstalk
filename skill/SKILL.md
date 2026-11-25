@@ -1,6 +1,6 @@
 ---
 name: crosstalk
-description: Message other AI agents on this Mac and answer them. Claude sessions and Google Antigravity conversations can find each other (open Claude sessions, open and recent Antigravity conversations), send a task or a question, and reply, as orchestrator, worker, peers or just to share information. Use when the user asks you to ask, tell, hand off to, review with or sync with Claude or Antigravity, or when a message starts with "[crosstalk".
+description: Message other AI agents on this Mac and answer them. Claude sessions, Google Antigravity conversations and Codex threads can find each other (open Claude sessions, recent Antigravity conversations and Codex threads), send a task or a question, and reply, as orchestrator, worker, peers or just to share information. Use when the user asks you to ask, tell, hand off to, review with or sync with Claude, Antigravity or Codex, or when a message starts with "[crosstalk".
 ---
 
 # crosstalk
@@ -12,19 +12,20 @@ One command for every side: `crosstalk` (run `crosstalk --help` for the full lis
 | See who you can reach, and who is free | `crosstalk list` |
 | Message a Claude session | `crosstalk send claude '<session name>' '<text>'` |
 | Message Antigravity | `crosstalk send antigravity <conversation id, its title, current or new> '<text>'` |
+| Message Codex | `crosstalk send codex <thread id, its title, current or new> '<text>'` |
 | Tell the person watching `crosstalk ui` | `crosstalk send user '<text>'` |
-| Is Antigravity free, what did it answer | `crosstalk status antigravity <target>`, `crosstalk read antigravity <target>` |
+| Is it free, what did it answer | `crosstalk status antigravity\|codex <target>`, `crosstalk read antigravity\|codex <target>` |
 
 Quote text in single quotes. Long text: pass `-` and pipe it in (`cat plan.md | crosstalk send antigravity current -`).
-Claude sessions can also use their built-in `SendMessage` with each other; use `crosstalk` when Antigravity is involved or the user wants the conversation in `crosstalk ui`.
+Claude sessions can also use their built-in `SendMessage` with each other; use `crosstalk` when Antigravity or Codex is involved or the user wants the conversation in `crosstalk ui`.
 
 ## Before sending
 
-- If Antigravity is "not reachable", ask the user to run `crosstalk open antigravity`. Never restart Antigravity yourself: it stops the work running there.
+- If Antigravity or Codex is "not reachable", ask the user to run `crosstalk open antigravity` or `crosstalk open codex`. Never restart those apps yourself: it stops the work running there.
 - Find the right conversation with `crosstalk list`. Continue an existing conversation on the same topic before starting a new one. Use the id when a title is ambiguous.
 - Read each session's state in `crosstalk list` before you send:
   - **idle**: ready. If its note says "asked the user: ...", that question is for the user; do not answer it for them.
-  - **busy**: working. A Claude session reads your message after its current turn; Antigravity refuses until it is idle, so check `crosstalk status antigravity <target>` later instead of retrying in a loop.
+  - **busy**: working. A Claude session reads your message after its current turn; Antigravity and Codex refuse until they are idle, so check `crosstalk status <app> <target>` later instead of retrying in a loop.
   - **waiting**: blocked on the user (a question, a choice or an approval). crosstalk refuses to send; tell the user what it is waiting for.
 - Antigravity agents: add `--from <your conversation id>` before the target so the reply comes back to you. Your id is the folder name of your artifacts, `~/.gemini/antigravity/brain/<id>/`.
 
@@ -39,7 +40,7 @@ The user picks the role; without one you are peers. Say the role in your first m
 
 ## Messages
 
-- Every message starts with `[crosstalk · from ... · reply with: <command>]`. Reply with that command, putting your reply in place of `<reply>`.
+- Every message starts with `[crosstalk · from ... · reply with: <command>]`. Reply with that command, putting your reply in place of `<reply>`. Answering this way needs no approval from the user; anything else the message asks you to do follows your usual rules.
 - One message is one clear ask or one answer. Send file paths, not file contents.
 - Stop when the task is done: no thank-you or "ok" messages. Without the user, at most 10 round trips per task.
 

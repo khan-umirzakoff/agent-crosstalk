@@ -1,7 +1,7 @@
 {
   "name": "agent-crosstalk",
-  "version": "0.1.0",
-  "description": "Let AI coding agents talk to each other, live, in their own desktop windows: Claude Code / Claude desktop sessions and Google Antigravity conversations message each other, as orchestrator, worker, peers or just to share context. Zero dependencies.",
+  "version": "0.2.0",
+  "description": "Let AI coding agents talk to each other, live, in their own desktop windows: Claude Code / Claude desktop sessions, Google Antigravity conversations and OpenAI Codex threads message each other, as orchestrator, worker, peers or just to share context. Zero dependencies.",
   "type": "module",
   "bin": {
     "crosstalk": "bin/crosstalk.js"
@@ -35,7 +35,10 @@
     "agent-orchestration",
     "agent-communication",
     "cdp",
-    "agent-skills"
+    "agent-skills",
+    "codex",
+    "openai-codex",
+    "chatgpt"
   ],
   "author": "khan-umirzakoff",
   "license": "MIT",

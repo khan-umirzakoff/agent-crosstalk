@@ -1,12 +1,12 @@
-# crosstalk: let Claude and Antigravity talk to each other
+# crosstalk: let Claude, Antigravity and Codex talk to each other
 
 **crosstalk** connects AI coding agents running on your Mac so they can message each other, live, in their
 own desktop windows. A Claude desktop (Claude Code) session can hand a task to a Google Antigravity (Gemini)
-conversation, Antigravity can answer or ask back, and you watch both sides as it happens, or all of it at
-once in a small local chat room.
+conversation or an OpenAI Codex thread, they can answer or ask back, and you watch every side as it happens,
+or all of it at once in a small local chat room.
 
-- **Desktop to desktop.** Messages land in the real Claude and Antigravity windows, not in a hidden background run.
-- **Find and continue old sessions.** List the open Claude sessions and recent Antigravity conversations, pick one, keep going.
+- **Desktop to desktop.** Messages land in the real Claude, Antigravity and Codex windows, not in a hidden background run.
+- **Find and continue old sessions.** List the open Claude sessions, recent Antigravity conversations and Codex threads, pick one, keep going.
 - **Neutral roles.** Either side can be the orchestrator, the worker, a peer to argue with, or just a source of information.
 - **Knows who is free.** Every session shows as idle, busy or waiting for you, with the question it asked. crosstalk
   never answers a question meant for you, and if you have an unsent draft it waits until you stop typing,
@@ -18,7 +18,10 @@ once in a small local chat room.
 flowchart LR
   C["Claude desktop<br/>Claude Code sessions"] -- "crosstalk send antigravity" --> A["Antigravity desktop<br/>Gemini conversations"]
   A -- "crosstalk send claude" --> C
-  C & A -- "every message" --> R["crosstalk ui<br/>local chat room"]
+  C -- "crosstalk send codex" --> X["Codex desktop<br/>Codex threads in the ChatGPT app"]
+  X -- "crosstalk send claude" --> C
+  A <-- "crosstalk send codex / antigravity" --> X
+  C & A & X -- "every message" --> R["crosstalk ui<br/>local chat room"]
   Y["You"] -- "write to any agent" --> R
 ```
 
@@ -28,10 +31,12 @@ flowchart LR
 npm install -g github:khan-umirzakoff/agent-crosstalk
 crosstalk install              # adds the crosstalk skill to Claude, Antigravity and Codex
 crosstalk open antigravity     # restarts Antigravity with a local debug port so crosstalk can reach it
+crosstalk open codex           # same for the ChatGPT app, switched to Codex mode
 ```
 
 Requirements: macOS, Node.js 22 or newer, a recent [Claude Code](https://claude.com/claude-code) CLI with
-`claude agents --json` (tested with 2.1.328) and [Google Antigravity](https://antigravity.google).
+`claude agents --json` (tested with 2.1.328), [Google Antigravity](https://antigravity.google) and, for Codex,
+the ChatGPT desktop app with Codex.
 
 ## Use it
 
@@ -62,12 +67,13 @@ so the receiver always knows who wrote and how to answer.
 
 | Command | What it does |
 |---|---|
-| `crosstalk list [claude\|antigravity]` | Open Claude sessions and recent Antigravity conversations, with idle / busy / waiting |
+| `crosstalk list [claude\|antigravity\|codex]` | Open Claude sessions, recent Antigravity conversations and Codex threads, with idle / busy / waiting |
 | `crosstalk send claude "<session>" <text>` | Message a Claude session by its name |
 | `crosstalk send antigravity <target> <text>` | Target: conversation id, its title (or a unique part), `current` or `new` |
+| `crosstalk send codex <target> <text>` | Same targets, for Codex threads |
 | `crosstalk send user <text>` | Post to the person watching `crosstalk ui` |
-| `crosstalk read\|status antigravity [target]` | Last reply, or whether the agent is busy |
-| `crosstalk open antigravity` | Restart Antigravity with its debug port on `127.0.0.1:9000` |
+| `crosstalk read\|status antigravity\|codex [target]` | Last reply, or whether the agent is busy |
+| `crosstalk open antigravity\|codex` | Restart the app with its debug port on `127.0.0.1` (Antigravity 9000, ChatGPT 9001, in Codex mode) |
 | `crosstalk ui [--port 4477]` | Local chat room with every message in one timeline |
 | `crosstalk log [-n 20]` | Recent messages in the terminal |
 | `crosstalk install` / `uninstall` | Add or remove the agent skill |
@@ -92,6 +98,8 @@ Agents are told to stop when the task is done (no "thanks" ping-pong) and to mak
 - **Antigravity** is an Electron-style app. `crosstalk open antigravity` restarts it with
   `--remote-debugging-port=9000` bound to `127.0.0.1`. crosstalk then uses the Chrome DevTools Protocol to read
   the conversation list, type into the chat box and read the last answer, exactly as you would.
+- **Codex** lives in the ChatGPT app, which is Chromium-based too: `crosstalk open codex` gives it a debug
+  port on `127.0.0.1:9001` and switches it to Codex mode, and crosstalk drives the Codex thread the same way.
 - **Claude** sessions only accept messages from other Claude sessions. crosstalk starts a tiny `claude -p`
   relay (Haiku, about 10 seconds) in safe mode (none of your CLAUDE.md, hooks or plugins) with two tools,
   `ListAgents` and `SendMessage`. The text goes in as data under a fixed system prompt, and crosstalk checks
@@ -125,9 +133,11 @@ runs in a different permission mode than the receiving one. crosstalk's relay ru
 receiving session in another mode (for example bypass) asks you to approve each message. This is Claude's
 safety check; crosstalk does not work around it.
 
-**Does it work with Codex?** Codex agents can send with `crosstalk` (the skill is installed for Codex too);
-their messages are labelled `codex` and answers go to the chat room for now. Delivering messages into the
-Codex desktop app is next on the roadmap.
+**Does it work with Codex?** Yes, with the Codex mode of the ChatGPT desktop app. `crosstalk open codex`
+restarts the app with a local debug port and switches it to Codex mode; crosstalk types into a Codex thread,
+reads its answer and its state (a Stop button means busy). Codex agents are recognised by their
+`CODEX_THREAD_ID`, so answers go back to the right thread. Codex is careful with messages from other agents
+and may ask you to confirm in its chat before it answers; that is Codex's own safeguard.
 
 **Does it cost tokens?** Sending to Claude costs one short Haiku call. Sending to Antigravity costs nothing
 extra. The agents themselves use their normal plans.
@@ -145,7 +155,6 @@ its `data-testid` attributes, which an update can change. Please open an issue.
 
 ## Roadmap
 
-- Codex desktop: deliver messages into the Codex app, so Claude, Antigravity and Codex can all talk.
 - Wait for a reply: `crosstalk send --wait` that returns the answer to the caller.
 - More agents: Cursor, Windsurf, Gemini CLI, any app that exposes its chat to a local debug port.
 
