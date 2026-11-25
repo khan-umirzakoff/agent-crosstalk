@@ -34,7 +34,7 @@ Claude sessions can also use their built-in `SendMessage` with each other; use `
 The user picks the role; without one you are peers. Say the role in your first message.
 
 - **Orchestrator:** split the work, send each task with its done-criteria, check the results yourself. Workers bring you their questions and choices: decide them by the rules and preferences the user gave you. Ask the user only when those rules do not cover it, or for the things in Safety below.
-  - Antigravity and Codex workers: `crosstalk send --wait <app> <target> '<task>'` waits for the answer and prints it, so nothing has to be approved on your side (run it in the background for long tasks; `--wait 1800` waits up to 30 minutes).
+  - Claude sessions: `crosstalk send antigravity|codex ...` waits for the worker's answer and prints it, so nothing comes back to you as a message to approve. Run it in the background (it waits up to 30 minutes); you are told when the answer is in.
   - Claude workers: use your built-in `SendMessage`; Claude sessions in the same permission mode get each other's messages directly.
 - **Worker:** do the task, report the result and what you did not verify. When the user has named an orchestrator, send it your questions and choices with crosstalk instead of asking the user, and do not stop on a question dialog for the user; its answer settles the choice for this task.
 - **Peers:** discuss, challenge each other, agree on one answer; the side that owns the task acts.

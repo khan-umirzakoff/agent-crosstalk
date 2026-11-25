@@ -85,14 +85,16 @@ Text `-` reads the message from stdin: `cat plan.md | crosstalk send antigravity
 Let one Claude session lead and the others work, with nothing waiting for your click:
 
 ```bash
-crosstalk send --wait codex 'API review' 'Review src/api for missing auth checks; list file:line findings'
-crosstalk send --wait 1800 antigravity new 'Build the settings page from docs/settings.md'
+crosstalk send codex 'API review' 'Review src/api for missing auth checks; list file:line findings'
+crosstalk send antigravity new 'Build the settings page from docs/settings.md'
 ```
 
-`--wait` types the task into the worker's chat, waits until the worker is idle again, and prints its answer to
-the orchestrator (the worker is told to just answer in its own chat). The answer never travels back as a message,
-so Claude has nothing to hold, whatever permission mode the orchestrator runs in. Claude workers talk to a Claude
-orchestrator with Claude's own `SendMessage`, which needs no approval between sessions in the same permission mode.
+From a Claude session, sending to Antigravity or Codex types the task into the worker's chat, waits until the
+worker is idle again (up to 30 minutes), and prints its answer (the worker is told to just answer in its own chat).
+The answer never travels back as a message, so Claude has nothing to hold, whatever permission mode the
+orchestrator runs in. `--no-wait` sends and returns at once; `--wait <sec>` changes the limit. Claude workers talk
+to a Claude orchestrator with Claude's own `SendMessage`, which needs no approval between sessions in the same
+permission mode.
 
 ## Roles
 
@@ -145,8 +147,8 @@ from Claude, `crosstalk send claude` from Antigravity.
 **Why does Claude show "held — waiting for approval"?** Claude Code holds a message when the sending session
 runs in a different permission mode than the receiving one, and crosstalk's relay runs in the default mode. A
 Claude session in bypass mode therefore asks you before it reads a message from Antigravity or Codex. This is
-Claude's safety check and crosstalk does not work around it; use `--wait` from the Claude side instead (see
-*Orchestrating without approvals*), so answers come back as command output and nothing is held.
+Claude's safety check and crosstalk does not work around it. Let Claude ask instead (see *Orchestrating without
+approvals*): its send waits for the answer and gets it as command output, so nothing is held.
 
 **Does it work with Codex?** Yes, with the Codex mode of the ChatGPT desktop app. `crosstalk open codex`
 restarts the app with a local debug port and switches it to Codex mode; crosstalk types into a Codex thread,
