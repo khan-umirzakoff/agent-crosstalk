@@ -7,84 +7,125 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='11' cy='16' r='8' fill='%23D97757'/%3E%3Ccircle cx='21' cy='16' r='8' fill='%234C8DF6' fill-opacity='.85'/%3E%3C/svg%3E">
 <style>
 :root {
-  --bg: #f7f7f5; --panel: #ffffff; --line: #e6e5e1; --text: #1d1d1b; --muted: #74726c;
+  --bg: #f7f7f5; --panel: #ffffff; --line: #e6e5e1; --hover: #efeeea; --text: #1d1d1b; --muted: #74726c;
   --claude: #d97757; --antigravity: #4c8df6; --codex: #23a8b5; --user: #5b5a55; --busy: #e0a100; --ok: #2e9e5b; --waiting: #8b6cf6;
-  --bubble: #ffffff; --mine: #1d1d1b; --mine-text: #fafaf8; --error: #c4372c;
+  --bubble: #ffffff; --mine: #1d1d1b; --mine-text: #fafaf8; --error: #c4372c; --code: #f0efeb;
   --font: ui-sans-serif, -apple-system, "SF Pro Text", "Inter", system-ui, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #141413; --panel: #1c1c1a; --line: #2c2b28; --text: #ecebe7; --muted: #9a988f;
-    --bubble: #222220; --mine: #ecebe7; --mine-text: #141413; --user: #b8b6ae;
+    --bg: #141413; --panel: #1c1c1a; --line: #2c2b28; --hover: #262624; --text: #ecebe7; --muted: #9a988f;
+    --bubble: #222220; --mine: #ecebe7; --mine-text: #141413; --user: #b8b6ae; --code: #2a2a27;
   }
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
-body { background: var(--bg); color: var(--text); font: 14px/1.5 var(--font); display: grid; grid-template-columns: 280px minmax(0, 1fr); }
+body { background: var(--bg); color: var(--text); font: 14px/1.5 var(--font); display: grid; grid-template-columns: clamp(280px, 24vw, 360px) minmax(0, 1fr); }
+button { font: inherit; color: inherit; }
 aside { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
-.brand { display: flex; align-items: center; gap: 10px; padding: 16px; font-weight: 600; font-size: 15px; letter-spacing: -.01em; }
-.brand svg { flex: none; }
-.session-search { margin: 0 12px; padding: 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--text); font: inherit; }
-.no-sessions { margin: 10px 8px; color: var(--muted); }
-.agents { overflow-y: auto; padding: 0 8px 16px; flex: 1; }
-.group { margin-top: 14px; }
-.group h2 { display: flex; align-items: center; gap: 8px; margin: 0 8px 6px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-.group h2 .dot { width: 8px; height: 8px; border-radius: 50%; }
-.group .note { margin: 0 8px; font-size: 12px; color: var(--muted); }
-.group .note code { font-family: var(--mono); font-size: 11px; }
-.project { margin: 8px 8px 2px; font-size: 11px; color: var(--muted); }
-button.agent { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; cursor: pointer; }
-button.agent:hover { background: var(--bg); }
-button.agent[hidden] { display: none; }
-button.agent[aria-pressed="true"] { background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
-button.agent:focus-visible { outline: 2px solid var(--antigravity); }
-.agent .text { flex: 1; min-width: 0; display: grid; }
-.agent .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.agent .note { font-size: 12px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.agent .state { width: 7px; height: 7px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--muted); flex: none; opacity: .6; }
-.agent .state.busy, .agent .state.idle, .agent .state.waiting, .agent .state.open { opacity: 1; box-shadow: none; }
-.agent .state.busy { background: var(--busy); animation: pulse 1.4s ease-in-out infinite; }
-.agent .state.idle { background: var(--ok); }
-.agent .state.open { box-shadow: inset 0 0 0 2px var(--antigravity); }
-.agent .state.waiting { background: var(--waiting); box-shadow: 0 0 0 3px color-mix(in srgb, var(--waiting) 25%, transparent); }
-button.agent { align-items: flex-start; }
-.agent .state { margin-top: 7px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 16px 16px 12px; font-weight: 600; font-size: 15px; letter-spacing: -.01em; }
+.search { margin: 0 12px 8px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+.search:focus { outline: 2px solid var(--antigravity); outline-offset: -1px; }
+nav { overflow-y: auto; padding: 0 6px 24px; flex: 1; }
+.muted { color: var(--muted); }
+.note-line { margin: 2px 10px 6px 30px; font-size: 12px; color: var(--muted); }
+.note-line code { font-family: var(--mono); font-size: 11px; }
+
+/* tree */
+.line { display: flex; align-items: center; min-width: 0; }
+.twisty { all: unset; flex: none; width: 20px; height: 26px; display: grid; place-items: center; border-radius: 6px; cursor: pointer; color: var(--muted); }
+.twisty:hover { background: var(--hover); color: var(--text); }
+.twisty:focus-visible, .item:focus-visible { outline: 2px solid var(--antigravity); outline-offset: -2px; }
+.twisty svg { transition: transform .15s ease; }
+.twisty[aria-expanded="false"] svg { transform: rotate(-90deg); }
+.twisty-space { flex: none; width: 20px; }
+.item { all: unset; box-sizing: border-box; flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 8px; padding: 5px 8px; border-radius: 8px; cursor: pointer; }
+.item:hover { background: var(--hover); }
+.item[aria-current="true"] { background: var(--hover); box-shadow: inset 0 0 0 1px var(--line); }
+.app { margin-top: 10px; }
+.app-head .item { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); align-items: center; }
+.app .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.new { all: unset; flex: none; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 6px; cursor: pointer; color: var(--muted); }
+.new:hover { background: var(--hover); color: var(--text); }
+.new:focus-visible { outline: 2px solid var(--antigravity); }
+.project .item { font-size: 12px; color: var(--muted); align-items: center; }
+.project .count { margin-left: auto; font-size: 11px; opacity: .8; }
+.node { padding-left: calc(14px + var(--d) * 10px); }
+.node .item { padding-left: 4px; }
+.text { flex: 1; min-width: 0; display: grid; }
+.name { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.name span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.name svg { flex: none; color: var(--muted); }
+.kind { flex: none; font-size: 11px; color: var(--muted); }
+.note { font-size: 12px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ago { flex: none; font-size: 11px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.state { width: 7px; height: 7px; border-radius: 50%; flex: none; margin-top: 7px; box-shadow: inset 0 0 0 1.5px var(--muted); opacity: .55; }
+.state.busy, .state.idle, .state.waiting, .state.open { opacity: 1; box-shadow: none; }
+.state.busy { background: var(--busy); animation: pulse 1.4s ease-in-out infinite; }
+.state.idle { background: var(--ok); }
+.state.open { box-shadow: inset 0 0 0 2px var(--antigravity); }
+.state.waiting { background: var(--waiting); box-shadow: 0 0 0 3px color-mix(in srgb, var(--waiting) 25%, transparent); }
+.closed .name span { color: var(--muted); }
 @keyframes pulse { 50% { opacity: .35; } }
+
+/* main */
 main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-#timeline { flex: 1; overflow-y: auto; padding: 24px clamp(16px, 4vw, 48px); display: flex; flex-direction: column; gap: 14px; }
+header { display: flex; align-items: center; gap: 10px; padding: 12px clamp(16px, 3vw, 32px); border-bottom: 1px solid var(--line); background: var(--panel); min-height: 60px; }
+header h1 { margin: 0; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title { min-width: 0; flex: 1; }
+.sub { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; }
+.sub .state { margin-top: 0; }
+.clip { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+#back { all: unset; display: none; width: 32px; height: 32px; place-items: center; border-radius: 8px; cursor: pointer; }
+#back:hover { background: var(--hover); }
+.scroll { flex: 1; overflow-y: auto; padding: 20px clamp(16px, 4vw, 48px); display: flex; flex-direction: column; gap: 14px; }
+.scroll[hidden] { display: none; }
 .empty { margin: auto; max-width: 420px; text-align: center; color: var(--muted); }
 .empty svg { margin-bottom: 12px; }
 .empty b { color: var(--text); font-weight: 600; }
-.msg { display: flex; gap: 10px; max-width: 760px; }
+.earlier { all: unset; align-self: center; font-size: 12px; color: var(--muted); padding: 4px 12px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; }
+.earlier:hover { color: var(--text); background: var(--hover); }
+.msg { display: flex; gap: 10px; max-width: 780px; }
 .msg.fresh { animation: rise .25s ease-out; }
 .msg.mine { align-self: flex-end; flex-direction: row-reverse; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
 .avatar { width: 28px; height: 28px; border-radius: 50%; flex: none; display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 600; }
+.avatar.relay { background: var(--line); color: var(--text); }
+.body { min-width: 0; }
 .meta { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-bottom: 4px; flex-wrap: wrap; }
 .msg.mine .meta { justify-content: flex-end; }
-.meta .who, .meta .to-name { max-width: 28ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meta .who, .meta .to-name { all: unset; max-width: 28ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .meta .who { color: var(--text); font-weight: 600; }
-.meta time { opacity: .8; }
-.meta svg { opacity: .6; }
+.meta button.who:hover, .meta button.to-name:hover { text-decoration: underline; cursor: pointer; }
 .bubble { background: var(--bubble); border: 1px solid var(--line); border-radius: 14px; padding: 9px 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bubble.relay { background: transparent; border-style: dashed; color: var(--muted); }
 .msg.mine .bubble { background: var(--mine); color: var(--mine-text); border-color: transparent; }
-form { border-top: 1px solid var(--line); background: var(--panel); padding: 12px clamp(16px, 4vw, 48px) 16px; display: grid; gap: 8px; }
-.to { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); min-width: 0; }
-.to select { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; min-width: 0; max-width: 100%; }
+.bubble code { font-family: var(--mono); font-size: 12.5px; background: var(--code); border-radius: 4px; padding: 1px 4px; }
+.msg.mine .bubble code { background: color-mix(in srgb, var(--mine-text) 18%, transparent); }
+.bubble pre { margin: 6px 0; padding: 8px 10px; background: var(--code); border-radius: 8px; overflow-x: auto; white-space: pre; }
+.bubble pre code { background: none; padding: 0; }
+form { border-top: 1px solid var(--line); background: var(--panel); padding: 12px clamp(16px, 4vw, 48px) 14px; display: grid; gap: 6px; }
+form[hidden] { display: none; }
 .row { display: flex; gap: 8px; align-items: flex-end; }
 textarea { flex: 1; min-width: 0; resize: none; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 44px; max-height: 200px; }
-textarea:focus, .to select:focus { outline: 2px solid var(--antigravity); outline-offset: -1px; }
-button.send { font: inherit; font-weight: 600; border: 0; border-radius: 12px; height: 44px; padding: 0 18px; background: var(--text); color: var(--bg); cursor: pointer; }
-button.send:disabled { opacity: .4; cursor: default; }
+textarea:focus { outline: 2px solid var(--antigravity); outline-offset: -1px; }
+button.send { border: 0; border-radius: 12px; width: 44px; height: 44px; display: grid; place-items: center; background: var(--text); color: var(--bg); cursor: pointer; flex: none; }
+button.send:disabled { opacity: .35; cursor: default; }
 .status { font-size: 12px; min-height: 18px; color: var(--muted); }
 .status.error { color: var(--error); }
-@media (max-width: 720px) {
-  body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
-  aside { border-right: 0; border-bottom: 1px solid var(--line); }
-  .agents, .session-search { display: none; }
+.notice { border-top: 1px solid var(--line); background: var(--panel); padding: 14px clamp(16px, 4vw, 48px); font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.notice[hidden] { display: none; }
+.scroll, form, .notice { padding-inline: max(16px, calc((100% - 820px) / 2)); }
+.msg.pending { opacity: .5; }
+@media (max-width: 760px) {
+  body { grid-template-columns: minmax(0, 1fr); }
+  body.in-chat aside, body:not(.in-chat) main { display: none; }
+  aside { border-right: 0; }
+  #back { display: grid; }
 }
-@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
@@ -93,34 +134,53 @@ button.send:disabled { opacity: .4; cursor: default; }
     <svg width="26" height="22" viewBox="0 0 38 32" aria-hidden="true"><circle cx="11" cy="16" r="8" fill="var(--claude)"/><circle cx="19" cy="16" r="8" fill="var(--antigravity)" fill-opacity=".85"/><circle cx="27" cy="16" r="8" fill="var(--codex)" fill-opacity=".8"/></svg>
     crosstalk
   </div>
-  <input class="session-search" id="sessionSearch" type="search" aria-label="Find a session" placeholder="Find a session" autocomplete="off">
-  <div class="agents" id="agents" aria-label="Agents">
-    <p id="noSessions" class="no-sessions" role="status" hidden>No matching sessions</p>
-    <div id="agentGroups"></div>
-  </div>
+  <input class="search" id="search" type="search" aria-label="Find a session" placeholder="Find a session" autocomplete="off">
+  <nav id="tree" aria-label="Sessions"></nav>
 </aside>
 <main>
-  <div id="timeline" role="log" aria-live="off" aria-label="Messages"></div>
-  <form id="composer">
-    <label class="to">To <select id="to"></select></label>
+  <header>
+    <button id="back" type="button" aria-label="Back to sessions"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M11 4 6 9l5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <div class="title"><h1 id="title"></h1><div class="sub" id="sub"></div></div>
+  </header>
+  <div id="log" class="scroll" role="log" aria-live="off" aria-label="All crosstalk messages"></div>
+  <div id="chat" class="scroll" role="log" aria-live="polite" aria-label="Chat" hidden></div>
+  <form id="composer" hidden>
     <div class="row">
-      <textarea id="text" rows="1" placeholder="Message" aria-label="Message"></textarea>
-      <button class="send" id="sendBtn" type="submit">Send</button>
+      <textarea id="text" rows="1" aria-label="Message"></textarea>
+      <button class="send" id="sendBtn" type="submit" aria-label="Send"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M9 14V4M4.5 8.5 9 4l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>
     <div class="status" id="status" role="status"></div>
   </form>
+  <div class="notice" id="notice" hidden></div>
 </main>
 <script>
 const TOKEN = location.hash.slice(1);
+const APPS = ['claude', 'antigravity', 'codex'];
 const COLOR = { claude: 'var(--claude)', antigravity: 'var(--antigravity)', codex: 'var(--codex)', user: 'var(--user)' };
 const LABEL = { claude: 'Claude', antigravity: 'Antigravity', codex: 'Codex', terminal: 'Terminal', user: 'You' };
-const STATE = { idle: 'Ready', busy: 'Working', waiting: 'Waiting for you', open: 'Open in its app' };
+const STATE = { idle: 'Ready', busy: 'Working', waiting: 'Waiting for you', open: 'Open', closed: 'Not running' };
+const INITIAL = { claude: 'C', antigravity: 'A', codex: 'Cx', terminal: '>', user: 'Y' };
+const DELIVERY = { held: 'Held by Claude', queued: 'Queued' };
+const RECENT = 3 * 864e5; // trees with activity in the last 3 days start expanded
 const $ = (id) => document.getElementById(id);
-const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
-let agentsJson = '';
-let lastSender = null;
-let touched = false; // the person picked a recipient; stop choosing one for them
-let live = false; // false while the backlog streams in
+const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids.filter((k) => k != null && k !== false)); return e; };
+const svg = (html, size = 12) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('width', size); s.setAttribute('height', size); s.setAttribute('viewBox', '0 0 12 12'); s.setAttribute('aria-hidden', 'true'); s.innerHTML = html; return s; };
+const ICON = {
+  chevron: '<path d="M3 4.5 6 7.5l3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+  plus: '<path d="M6 2.5v7M2.5 6h7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+  fork: '<g fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="3" cy="2.5" r="1.3"/><circle cx="9" cy="2.5" r="1.3"/><circle cx="6" cy="9.5" r="1.3"/><path d="M3 3.8v.7c0 1.5 3 1.5 3 3.5M9 3.8v.7c0 1.5-3 1.5-3 3.5"/></g>',
+  log: '<g fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M1.5 2.5h6v4h-3l-2 1.5v-1.5h-1z"/><path d="M8.5 4.5h2v4h-1v1.5l-2-1.5h-3V8"/></g>',
+};
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem('crosstalk.' + k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('crosstalk.' + k, JSON.stringify(v)); } catch {} },
+};
+
+let agents = {};
+let expanded = store.get('expanded', {}); // only the person's own toggles; the rest follow RECENT
+let sel = store.get('selected', { key: 'log' });
+let chat = { key: null, n: 60, sig: '', total: 0 };
+let live = false;
 
 async function api(path, opts = {}) {
   const r = await fetch(path, { ...opts, headers: { 'x-crosstalk-token': TOKEN, 'content-type': 'application/json' } });
@@ -129,147 +189,321 @@ async function api(path, opts = {}) {
   return data;
 }
 
-const INITIAL = { claude: 'C', antigravity: 'A', codex: 'Cx', terminal: '>', user: 'Y' };
-const avatar = (agent) => el('div', { className: 'avatar', textContent: INITIAL[agent] || '?', title: LABEL[agent] || agent, style: `background:${COLOR[agent] || 'var(--user)'}` });
-const arrow = () => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('width', 12); s.setAttribute('height', 12); s.setAttribute('viewBox', '0 0 12 12'); s.setAttribute('aria-label', 'to'); s.innerHTML = '<path d="M2 6h8M7 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>'; return s; };
-const short = (p) => (p.agent === 'user' ? 'You' : p.name || LABEL[p.agent] || p.agent);
+function ago(ms) {
+  if (!ms) return '';
+  const m = Math.max(0, Math.round((Date.now() - new Date(ms)) / 60000));
+  return m < 1 ? 'now' : m < 60 ? `${m}m` : m < 2880 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`;
+}
+const label = (r) => (r.name && r.name !== r.id ? r.name : `${r.kind ? r.kind[0].toUpperCase() + r.kind.slice(1) : 'Untitled'} · ${String(r.id).slice(0, 8)}`);
+const keyOf = (agent, id) => `${agent}|${id}`;
+const findRow = (key) => {
+  const [agent, id] = key.split('|');
+  for (const g of Array.isArray(agents[agent]) ? agents[agent] : []) for (const r of g.rows) if (r.id === id) return { agent, row: r, project: g.project };
+  return null;
+};
 
-function addMessage(m) {
-  $('timeline').querySelector('.empty')?.remove();
-  const mine = m.from?.agent === 'user';
-  if (!mine && ['claude', 'antigravity', 'codex'].includes(m.from?.agent)) {
-    lastSender = m.from;
-    const key = senderKey(lastSender);
-    if (!touched && [...$('to').options].some((o) => o.value === key)) { $('to').value = key; markSelected(); }
+// ---- sidebar tree ----
+function isOpen(key, recent) { return expanded[key] ?? recent; }
+function toggle(key, open) {
+  expanded[key] = !open;
+  store.set('expanded', expanded);
+  renderTree();
+}
+function twisty(key, open, what) {
+  const b = el('button', { className: 'twisty', type: 'button', ariaLabel: `${open ? 'Collapse' : 'Expand'} ${what}` }, svg(ICON.chevron));
+  b.setAttribute('aria-expanded', String(open));
+  b.onclick = () => toggle(key, open);
+  return b;
+}
+const active = (r) => r.status === 'busy' || r.status === 'waiting' || (r.last && Date.now() - new Date(r.last) < RECENT);
+const subtreeActive = (rows, i) => { for (let j = i; j < rows.length && (j === i || rows[j].depth > rows[i].depth); j++) if (active(rows[j])) return true; return false; };
+
+function rowEl(agent, r, open, depth) {
+  const key = keyOf(agent, r.id);
+  const state = r.status || (r.open ? 'open' : '');
+  const node = el('div', { className: 'line node' + (state === 'closed' ? ' closed' : '') });
+  node.style.setProperty('--d', depth);
+  node.append(open === null ? el('span', { className: 'twisty-space' }) : twisty('node:' + key, open, label(r)));
+  const item = el('button', { className: 'item', type: 'button', title: [r.kind && `${r.kind} of the session above`, STATE[state], r.cwd || r.project, r.id].filter(Boolean).join(' · ') },
+    el('span', { className: 'state ' + state }),
+    el('span', { className: 'text' },
+      el('span', { className: 'name' }, depth && r.kind === 'fork' ? svg(ICON.fork, 11) : null, el('span', { textContent: label(r) })),
+      r.note ? el('span', { className: 'note', textContent: r.note }) : null),
+    el('time', { className: 'ago', textContent: ago(r.last) }));
+  item.setAttribute('aria-label', `${label(r)}${STATE[state] ? ', ' + STATE[state] : ''}${r.last ? ', ' + ago(r.last) + ' ago' : ''}`);
+  if (sel.key === key) item.setAttribute('aria-current', 'true');
+  item.onclick = () => select(key);
+  node.append(item);
+  return node;
+}
+
+function renderTree() {
+  const q = $('search').value.trim().toLowerCase();
+  const out = [];
+  if (!q) {
+    const log = el('div', { className: 'line' }, el('span', { className: 'twisty-space' }),
+      el('button', { className: 'item', type: 'button' }, svg(ICON.log, 14), el('span', { className: 'text' }, el('span', { textContent: 'All crosstalk messages' }))));
+    if (sel.key === 'log') log.lastChild.setAttribute('aria-current', 'true');
+    log.lastChild.onclick = () => select('log');
+    out.push(log);
   }
-  const d = new Date(m.ts);
-  const meta = el('div', { className: 'meta' },
-    el('span', { className: 'who', textContent: short(m.from || {}), title: `${LABEL[m.from?.agent] || ''} ${m.from?.name || ''}` }), arrow(),
-    el('span', { className: 'to-name', textContent: short(m.to || {}), title: `${LABEL[m.to?.agent] || ''} ${m.to?.name || ''}` }),
-    ...(DELIVERY[m.delivery] ? [el('span', { textContent: DELIVERY[m.delivery] })] : []),
-    el('time', { dateTime: m.ts, textContent: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
-  const node = el('div', { className: 'msg' + (mine ? ' mine' : '') + (live ? ' fresh' : '') }, avatar(m.from?.agent), el('div', {}, meta, el('div', { className: 'bubble', textContent: m.text })));
-  const t = $('timeline');
-  const atBottom = t.scrollHeight - t.scrollTop - t.clientHeight < 80;
-  t.append(node);
-  if (atBottom || mine) node.scrollIntoView({ block: 'end' });
-}
-
-function empty() {
-  const box = el('div', { className: 'empty', innerHTML: '<svg width="72" height="32" viewBox="0 0 72 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="var(--claude)"/><circle cx="36" cy="16" r="14" fill="var(--antigravity)" fill-opacity=".85"/><circle cx="56" cy="16" r="14" fill="var(--codex)" fill-opacity=".8"/></svg>' });
-  box.append(el('p', {}, 'No messages yet. Tell any agent something like', el('br'), el('b', { textContent: '"ask Antigravity to review this diff"' }), el('br'), 'and the conversation shows up here.'));
-  $('timeline').replaceChildren(box);
-}
-
-function note(text, cmd) {
-  const p = el('p', { className: 'note', textContent: text });
-  if (cmd) p.append(' ', el('code', { textContent: cmd }));
-  return p;
-}
-
-function renderAgents(agents) {
-  const json = JSON.stringify(agents);
-  if (json === agentsJson) return; // unchanged: keep focus and selection
-  agentsJson = json;
-  const targets = [];
-  const groups = ['claude', 'antigravity', 'codex'].map((agent) => {
-    const rows = agents[agent];
-    const g = el('div', { className: 'group' }, el('h2', {}, el('span', { className: 'dot', style: `background:${COLOR[agent]}` }), LABEL[agent]));
-    if (!rows || rows.error) g.append(agent === 'claude' ? note(rows?.error || 'Not available') : note('Not reachable. Run', `crosstalk open ${agent}`));
-    else if (!rows.length) g.append(note('None open'));
-    else {
-      if (agent !== 'claude') targets.push({ key: `${agent}|new`, label: `${LABEL[agent]} · new ${agent === 'codex' ? 'thread' : 'conversation'}` });
-      let project = null;
-      for (const r of rows) {
-        if (r.project && r.project !== project) g.append(el('div', { className: 'project', textContent: (project = r.project) }));
-        const key = `${agent}|${r.id || r.name}`;
-        const state = r.status || (r.open ? 'open' : '');
-        targets.push({ key, label: `${LABEL[agent]} · ${r.name}`, state });
-        const b = el('button', { className: 'agent', type: 'button', title: [r.id, r.cwd || r.project].filter(Boolean).join(' · '), ariaLabel: `${LABEL[agent]}: ${r.name}${STATE[state] ? ', ' + STATE[state] : ''}` },
-          el('span', { className: 'state ' + state, title: STATE[state] || 'State unknown' }),
-          el('span', { className: 'text' }, el('span', { className: 'name', textContent: r.name }), ...(r.note ? [el('span', { className: 'note', textContent: r.note })] : [])));
-        b.dataset.key = key;
-        b.dataset.search = [r.name, r.id, LABEL[agent], r.cwd, r.project].filter(Boolean).join(' ').toLowerCase();
-        b.onclick = () => { touched = true; $('to').value = key; markSelected(); $('text').focus(); };
-        g.append(b);
-      }
+  let matches = 0;
+  for (const agent of APPS) {
+    const data = agents[agent];
+    const appOpen = q ? true : isOpen('app:' + agent, true);
+    const head = el('div', { className: 'line app-head' }, twisty('app:' + agent, appOpen, LABEL[agent]),
+      el('button', { className: 'item', type: 'button', onclick: () => toggle('app:' + agent, appOpen) }, el('span', { className: 'dot', style: `background:${COLOR[agent]}` }), LABEL[agent]));
+    if (agent !== 'claude' && Array.isArray(data)) {
+      const add = el('button', { className: 'new', type: 'button', title: `New ${agent === 'codex' ? 'Codex thread' : 'Antigravity conversation'}` }, svg(ICON.plus, 14));
+      add.setAttribute('aria-label', add.title);
+      add.onclick = () => select(keyOf(agent, 'new'));
+      head.append(add);
     }
-    return g;
-  });
-  $('agentGroups').replaceChildren(...groups);
-  const keep = $('to').value;
-  $('to').replaceChildren(...targets.map((t) => el('option', { value: t.key, textContent: t.label + (t.state === 'waiting' ? ' (waiting for you)' : '') })));
-  const last = lastSender && senderKey(lastSender);
-  const has = (k) => k && targets.some((t) => t.key === k);
-  $('to').value = has(keep) ? keep : has(last) ? last : (targets.find((t) => t.state === 'idle') || targets[0])?.key || '';
-  markSelected();
-  filterSessions();
-}
-
-// Search fields follow the session picker in Claude Command Center v5.14.0 (MIT).
-function filterSessions() {
-  const query = $('sessionSearch').value.trim().toLowerCase();
-  for (const group of $('agentGroups').children) {
-    const rows = [...group.querySelectorAll('button.agent')];
-    for (const row of rows) row.hidden = !row.dataset.search.includes(query);
-    group.hidden = Boolean(query) && rows.every((row) => row.hidden);
-    for (const project of group.querySelectorAll('.project')) project.hidden = Boolean(query);
+    const app = el('div', { className: 'app' }, head);
+    out.push(app);
+    if (!appOpen) continue;
+    if (!data) { app.append(el('p', { className: 'note-line', textContent: 'Loading…' })); continue; }
+    if (data.error) {
+      app.append(agent === 'claude' ? el('p', { className: 'note-line', textContent: data.error })
+        : el('p', { className: 'note-line' }, 'Not reachable. Run ', el('code', { textContent: `crosstalk open ${agent}` })));
+      continue;
+    }
+    if (!data.length) app.append(el('p', { className: 'note-line', textContent: 'No sessions' }));
+    for (const g of data) {
+      const rows = q ? g.rows.filter((r) => [label(r), r.id, g.project, r.note].join(' ').toLowerCase().includes(q)) : g.rows;
+      if (!rows.length) continue;
+      matches += rows.length;
+      const pKey = `proj:${agent}|${g.project}`;
+      const pOpen = q ? true : isOpen(pKey, g.rows.some(active));
+      app.append(el('div', { className: 'line project' }, twisty(pKey, pOpen, g.project || 'no folder'),
+        el('button', { className: 'item', type: 'button', onclick: () => toggle(pKey, pOpen) }, el('span', { textContent: g.project || '(no folder)' }), el('span', { className: 'count', textContent: g.rows.length }))));
+      if (!pOpen) continue;
+      if (q) { for (const r of rows) app.append(rowEl(agent, r, null, 0)); continue; }
+      let hideBelow = Infinity;
+      rows.forEach((r, i) => {
+        if (r.depth > hideBelow) return;
+        hideBelow = Infinity;
+        const parent = rows[i + 1]?.depth > r.depth;
+        const open = parent ? isOpen('node:' + keyOf(agent, r.id), subtreeActive(rows, i)) : null;
+        app.append(rowEl(agent, r, open, r.depth));
+        if (parent && !open) hideBelow = r.depth;
+      });
+    }
   }
-  $('noSessions').hidden = !query || [...$('agentGroups').children].some((group) => !group.hidden);
+  if (q && !matches) out.push(el('p', { className: 'note-line', textContent: 'No matching sessions', role: 'status' }));
+  const nav = $('tree');
+  const top = nav.scrollTop;
+  nav.replaceChildren(...out);
+  nav.scrollTop = top;
 }
 
-$('sessionSearch').addEventListener('input', filterSessions);
-
-function markSelected() {
-  document.querySelectorAll('button.agent').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.key === $('to').value)));
+// ---- main pane ----
+function header() {
+  if (sel.key === 'log') {
+    $('title').textContent = 'All crosstalk messages';
+    $('sub').replaceChildren('Between agents');
+    return;
+  }
+  const [agent, id] = sel.key.split('|');
+  if (id === 'new') {
+    $('title').textContent = `New ${agent === 'codex' ? 'Codex thread' : 'Antigravity conversation'}`;
+    $('sub').replaceChildren(el('span', { className: 'dot', style: `width:8px;height:8px;border-radius:50%;background:${COLOR[agent]}` }), LABEL[agent]);
+    return;
+  }
+  const found = findRow(sel.key);
+  const r = found?.row || { id, name: sel.name || id };
+  const state = r.status || '';
+  $('title').textContent = label(r);
+  $('title').title = r.id;
+  $('sub').replaceChildren(el('span', { className: 'state ' + state }), el('span', { className: 'clip', textContent: [STATE[state], LABEL[agent], found?.project, r.last && `active ${ago(r.last)} ago`].filter(Boolean).join(' · ') }));
 }
 
+function composer() {
+  const [agent, id] = sel.key.split('|');
+  const r = findRow(sel.key)?.row;
+  const closed = r?.status === 'closed';
+  const waiting = agent === 'claude' && r?.status === 'waiting'; // a message cannot answer its question
+  $('composer').hidden = sel.key === 'log' || closed || waiting;
+  $('notice').hidden = !(closed || waiting);
+  if (closed) $('notice').textContent = 'Not running · read-only';
+  if (waiting) $('notice').textContent = `${r.note || 'Waiting for you'} · answer in the Claude app`;
+  $('text').placeholder = id === 'new' ? 'First message' : 'Message';
+}
+
+function select(key) {
+  sel = { key, name: findRow(key)?.row.name ?? (key === sel.key ? sel.name : undefined) };
+  store.set('selected', sel);
+  document.body.classList.toggle('in-chat', true);
+  setStatus('');
+  renderTree();
+  header();
+  composer();
+  const log = key === 'log';
+  $('log').hidden = !log;
+  $('chat').hidden = log;
+  if (log) return scrollEnd($('log'));
+  chat = { key, n: 60, sig: '', total: 0 };
+  $('chat').replaceChildren(el('div', { className: 'empty', textContent: key.endsWith('|new') ? 'Write the first message below.' : 'Loading…' }));
+  if (!key.endsWith('|new')) loadChat();
+  if (!$('composer').hidden && matchMedia('(min-width: 761px)').matches) $('text').focus();
+}
+
+function md(text) {
+  const esc = (t) => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  return text.split(/```[^\n]*\n?([\s\S]*?)```/).map((part, i) => (i % 2
+    ? `<pre><code>${esc(part.replace(/\n$/, ''))}</code></pre>`
+    : esc(part).replace(/`([^`\n]+)`/g, '<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>').replace(/^#{1,6} (.+)$/gm, '<strong>$1</strong>'))).join('');
+}
+const when = (ts) => {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return d.toDateString() === new Date().toDateString() ? time : `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${time}`;
+};
+function avatar(kind) {
+  if (kind === 'relay') return el('div', { className: 'avatar relay', title: 'Another agent' }, svg(ICON.log, 14));
+  return el('div', { className: 'avatar', textContent: INITIAL[kind] || '?', title: LABEL[kind] || kind, style: `background:${COLOR[kind] || 'var(--user)'}` });
+}
+
+function chatMessage(m, agent) {
+  const mine = m.role === 'user';
+  const relay = m.role === 'crosstalk' || m.role === 'peer';
+  const who = mine ? 'You' : relay ? (m.from || 'Another agent') : LABEL[agent];
+  const meta = el('div', { className: 'meta' }, el('span', { className: 'who', textContent: who }), m.ts ? el('time', { dateTime: m.ts, textContent: when(m.ts) }) : null);
+  return el('div', { className: 'msg' + (mine ? ' mine' : '') }, mine ? null : avatar(relay ? 'relay' : agent),
+    el('div', { className: 'body' }, meta, el('div', { className: 'bubble' + (relay ? ' relay' : ''), innerHTML: md(m.text) })));
+}
+
+async function loadChat() {
+  const { key, n } = chat;
+  const [agent, id] = key.split('|');
+  try {
+    const h = await api(`/api/messages?agent=${agent}&id=${encodeURIComponent(id)}&n=${n}`);
+    if (chat.key !== key || chat.n !== n) return; // another chat or page was asked for meanwhile
+    const sig = `${h.total}:${n}:${h.messages.at(-1)?.text.length}`;
+    if (sig === chat.sig) return;
+    const box = $('chat');
+    const picked = getSelection();
+    if (!picked.isCollapsed && box.contains(picked.anchorNode)) return; // do not drop what the person is selecting
+    chat.sig = sig;
+    chat.total = h.total;
+    const keepTop = chat.keep;
+    chat.keep = false;
+    const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+    const before = box.scrollHeight - box.scrollTop;
+    const kids = h.messages.map((m) => chatMessage(m, agent));
+    if (h.total > h.messages.length) {
+      const more = el('button', { className: 'earlier', type: 'button', textContent: `Earlier messages (${h.total - h.messages.length})` });
+      more.onclick = () => { chat.n += 100; chat.keep = true; loadChat(); };
+      kids.unshift(more);
+    }
+    box.replaceChildren(...(kids.length ? kids : [el('div', { className: 'empty', textContent: 'No messages yet.' })]));
+    if (keepTop) box.scrollTop = box.scrollHeight - before;
+    else if (atBottom || !chat.shown) scrollEnd(box);
+    chat.shown = true;
+  } catch (e) {
+    if (chat.key === key && !chat.shown) $('chat').replaceChildren(el('div', { className: 'empty', textContent: e.message }));
+  }
+}
+const scrollEnd = (box) => requestAnimationFrame(() => { box.scrollTop = box.scrollHeight; });
+
+// ---- crosstalk log ----
+const short = (p) => (p.agent === 'user' ? 'You' : p.name || LABEL[p.agent] || p.agent);
+function party(p, cls) {
+  const exists = p?.id && findRow(keyOf(p.agent, p.id));
+  const props = { className: cls, textContent: short(p || {}), title: `${LABEL[p?.agent] || ''} ${p?.name || ''}`.trim() };
+  if (!exists) return el('span', props);
+  const b = el('button', { ...props, type: 'button' });
+  b.onclick = () => select(keyOf(p.agent, p.id));
+  return b;
+}
+function addLog(m) {
+  const box = $('log');
+  box.querySelector('.empty')?.remove();
+  const mine = m.from?.agent === 'user';
+  const meta = el('div', { className: 'meta' }, party(m.from, 'who'), svg('<path d="M2 6h8M7 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>'), party(m.to, 'to-name'),
+    DELIVERY[m.delivery] ? el('span', { textContent: DELIVERY[m.delivery] }) : null, el('time', { dateTime: m.ts, textContent: when(m.ts) }));
+  const node = el('div', { className: 'msg' + (mine ? ' mine' : '') + (live ? ' fresh' : '') }, avatar(m.from?.agent), el('div', { className: 'body' }, meta, el('div', { className: 'bubble', textContent: m.text })));
+  const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  box.append(node);
+  if (atBottom || mine) scrollEnd(box);
+  const open = chat.key && [m.from, m.to].some((p) => p?.id && keyOf(p.agent, p.id) === chat.key);
+  if (live && open && sel.key === chat.key) setTimeout(loadChat, 800);
+}
+function emptyLog() {
+  const box = el('div', { className: 'empty', innerHTML: '<svg width="72" height="32" viewBox="0 0 72 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="var(--claude)"/><circle cx="36" cy="16" r="14" fill="var(--antigravity)" fill-opacity=".85"/><circle cx="56" cy="16" r="14" fill="var(--codex)" fill-opacity=".8"/></svg>' });
+  box.append(el('p', {}, 'No messages between agents yet. Tell one something like', el('br'), el('b', { textContent: '"ask Antigravity to review this diff"' })));
+  $('log').replaceChildren(box);
+}
+
+// ---- sending ----
 function setStatus(text, error = false) {
   $('status').textContent = text;
   $('status').className = 'status' + (error ? ' error' : '');
 }
-
-async function refresh() {
-  try {
-    renderAgents((await api('/api/state')).agents);
-  } catch (e) {
-    setStatus(e.message, true);
-  }
-}
-
-const senderKey = (p) => p.id ? `${p.agent}|${p.id}` : '';
-const DELIVERY = { held: 'Held by Claude', submitted: 'Delivery unconfirmed', queued: 'Queued' };
-$('to').onchange = () => { touched = true; markSelected(); };
 $('text').addEventListener('input', (e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; });
 $('text').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('composer').requestSubmit(); } });
 $('composer').onsubmit = async (e) => {
   e.preventDefault();
   const text = $('text').value.trim();
-  const [agent, ...rest] = $('to').value.split('|');
-  if (!text || !agent) return;
+  const [agent, id] = sel.key.split('|');
+  if (!text || !APPS.includes(agent)) return;
   $('sendBtn').disabled = true;
-  setStatus(agent === 'claude' ? 'Sending… (Claude takes about 10 s)' : 'Sending…');
+  setStatus('Sending…');
+  const pending = chatMessage({ role: 'user', text }, agent);
+  pending.classList.add('pending');
+  if (!$('chat').hidden) { $('chat').querySelector('.empty')?.remove(); $('chat').append(pending); scrollEnd($('chat')); }
   try {
-    const { delivery } = await api('/api/send', { method: 'POST', body: JSON.stringify({ agent, target: rest.join('|'), text }) });
+    const { to, delivery } = await api('/api/send', { method: 'POST', body: JSON.stringify({ agent, target: id, text }) });
     if ($('text').value.trim() === text) { $('text').value = ''; $('text').style.height = 'auto'; } // keep anything typed meanwhile
     setStatus(delivery === 'held' ? 'Claude held the message. Check its inbound message settings.' : DELIVERY[delivery] || '');
+    if (id === 'new' && to?.id) { await refresh(); select(keyOf(agent, to.id)); }
+    else if (chat.key === sel.key) { setTimeout(loadChat, 1500); setTimeout(loadChat, 6000); }
   } catch (err) {
+    pending.remove();
     setStatus(err.message, true);
   } finally {
     $('sendBtn').disabled = false;
   }
 };
 
+let stateJson = '';
+async function refresh() {
+  try {
+    const data = (await api('/api/state')).agents;
+    const json = JSON.stringify(data);
+    if (json === stateJson) return;
+    stateJson = json;
+    agents = data;
+    const focused = document.activeElement?.closest('nav') && document.activeElement.getAttribute('aria-label');
+    renderTree();
+    if (focused) [...$('tree').querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === focused)?.focus();
+    header();
+    if (sel.key !== 'log') composer();
+  } catch (e) {
+    $('sub').replaceChildren(el('span', { className: 'status error', textContent: e.message }));
+  }
+}
+
+$('search').addEventListener('input', renderTree);
+$('search').addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.target.value = ''; renderTree(); } });
+$('back').onclick = () => document.body.classList.remove('in-chat');
+
 if (!TOKEN) {
-  setStatus('Open the link that `crosstalk ui` printed (it ends with #…).', true);
-  $('sendBtn').disabled = true;
+  $('title').textContent = 'crosstalk';
+  $('sub').textContent = 'Open the link that `crosstalk ui` printed (it ends with #…).';
 } else {
-  empty();
+  emptyLog();
+  renderTree();
+  select(sel.key || 'log');
+  if (matchMedia('(max-width: 760px)').matches) document.body.classList.remove('in-chat');
   refresh();
-  setInterval(refresh, 10000);
+  setInterval(() => document.hidden || refresh(), 10000);
+  setInterval(() => { if (!document.hidden && chat.key && sel.key === chat.key && !chat.key.endsWith('|new')) loadChat(); }, 5000);
   const ev = new EventSource('/events?token=' + encodeURIComponent(TOKEN));
-  ev.onmessage = (e) => addMessage(JSON.parse(e.data));
-  ev.onopen = () => setTimeout(() => { live = true; $('timeline').setAttribute('aria-live', 'polite'); }, 1000); // animate and announce only new messages
+  const logged = new Set(); // a reconnect replays the backlog
+  ev.onmessage = (e) => { if (!logged.has(e.data)) { logged.add(e.data); addLog(JSON.parse(e.data)); } };
+  ev.onopen = () => setTimeout(() => { live = true; $('log').setAttribute('aria-live', 'polite'); }, 1000); // animate and announce only new messages
   ev.onerror = () => refresh();
 }
 </script>

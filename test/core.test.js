@@ -117,6 +117,8 @@ test('a Claude transcript keeps the user, other agents and Claude, not tools or 
     line({ type: 'user', origin: { kind: 'task-notification' }, message: { content: '<task-notification>done</task-notification>' } }),
     line({ type: 'user', origin: { kind: 'peer' }, message: { content: 'Another Claude session sent a message:\n<cross-session-message from="x">\n[crosstalk] From Codex. Hi\n</cross-session-message>' } }),
     line({ type: 'user', isSidechain: true, message: { content: 'subagent prompt' } }),
+    line({ type: 'attachment', attachment: { type: 'queued_command', prompt: 'Also check signup' } }),
+    line({ type: 'attachment', attachment: { type: 'queued_command', prompt: '<task-notification>x</task-notification>' } }),
     line({ type: 'assistant', message: { id: 'b', content: [{ type: 'text', text: 'Fixed.' }] } }),
     'not json',
   ].join('\n');
@@ -124,6 +126,7 @@ test('a Claude transcript keeps the user, other agents and Claude, not tools or 
     ['user', 'Fix the login'],
     ['claude', 'On it.\nReading auth.js'],
     ['peer', '[crosstalk] From Codex. Hi'],
+    ['user', 'Also check signup'],
     ['claude', 'Fixed.'],
   ]);
 });
@@ -161,4 +164,13 @@ test('read markers: a reread sends only new messages, the newest n first, and su
   assert.deepEqual([ids(v), v.seen, v.changed], [[], 30, false]);
   v = core.unreadView([{ n: 1, role: 'user', text: 'new' }], old, { n: 10 }); // rewritten
   assert.deepEqual([ids(v), v.changed], [[1], true]);
+});
+
+test('history drops the crosstalk header but keeps the sender; the person in the room is the user', () => {
+  const from = (agent, id, name) => core.unstamp({ role: 'user', text: `${core.header({ agent, id, name })}\nHello` });
+  assert.deepEqual(from('user', null, 'you'), { role: 'user', from: null, text: 'Hello' });
+  const codex = from('codex', '01a2', 'Fix login');
+  assert.deepEqual([codex.role, codex.text], ['crosstalk', 'Hello']);
+  assert.match(codex.from, /Codex/);
+  assert.deepEqual(core.unstamp({ role: 'claude', text: '[crosstalk] From x. Reply with: y\nHi' }).role, 'claude');
 });
