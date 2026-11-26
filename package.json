@@ -1,6 +1,6 @@
 {
   "name": "agent-crosstalk",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Let AI coding agents talk to each other, live, in their own desktop windows: Claude Code / Claude desktop sessions, Google Antigravity conversations and OpenAI Codex threads message each other, as orchestrator, worker, peers or just to share context. Zero dependencies.",
   "type": "module",
   "bin": {

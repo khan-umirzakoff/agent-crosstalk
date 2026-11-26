@@ -5,14 +5,12 @@ own desktop windows. A Claude desktop (Claude Code) session can hand a task to a
 conversation or an OpenAI Codex thread, they can answer or ask back, and you watch every side as it happens,
 or all of it at once in a small local chat room.
 
-- **Desktop to desktop.** Messages land in the real Claude, Antigravity and Codex windows, not in a hidden background run.
+- **Desktop to desktop.** Existing Antigravity conversations and local Codex chats receive messages by ID, even when another chat is on screen.
 - **Find and continue old sessions.** List the open Claude sessions, recent Antigravity conversations and Codex threads, pick one, keep going.
 - **Neutral roles.** Either side can be the orchestrator, the worker, a peer to argue with, or just a source of information.
-- **Knows who is free.** Every session shows as idle, busy or waiting for you, with the question it asked. crosstalk
-  never answers a question meant for you, and if you have an unsent draft it waits until you stop typing,
-  sends its message, then puts your draft back.
+- **Session state.** List sessions with the state available from each app. `status <app> <id>` checks the live state of a specific desktop session.
 - **One timeline.** `crosstalk ui` shows every message between agents in one chat view, and you can write into it too.
-- **Zero dependencies.** Node.js 22+, under 800 lines, MIT licensed. Nothing runs in the background.
+- **Zero npm dependencies.** Node.js 22+, MIT licensed. Commands run on demand.
 
 ```mermaid
 flowchart LR
@@ -55,7 +53,7 @@ crosstalk list                                         # who you can reach
 crosstalk send antigravity 'API review' 'Check src/api for missing auth checks'
 crosstalk send claude 'billing refactor' 'Antigravity found 3 issues, see notes/review.md'
 crosstalk status antigravity current                   # busy or idle
-crosstalk read antigravity current                     # last answer
+crosstalk read antigravity current -n 5                # its last 5 messages
 crosstalk ui                                           # open the chat room
 ```
 
@@ -72,29 +70,29 @@ so the receiver knows who wrote, from which session, and how to answer.
 | `crosstalk send antigravity <target> <text>` | Target: conversation id, its title (or a unique part), `current` or `new` |
 | `crosstalk send codex <target> <text>` | Same targets, for Codex threads |
 | `crosstalk send user <text>` | Post to the person watching `crosstalk ui` |
-| `crosstalk read\|status antigravity\|codex [target]` | Last reply, or whether the agent is busy |
-| `crosstalk open antigravity\|codex` | Restart the app with its debug port on `127.0.0.1` (Antigravity 9000, ChatGPT 9001, in Codex mode) |
+| `crosstalk read claude\|antigravity\|codex <target> [-n 10] [--start K]` | The conversation's messages (yours and the agent's), numbered from 1: the last n, or n from message K |
+| `crosstalk status antigravity\|codex [target]` | Whether the agent is idle, busy or waiting |
+| `crosstalk open antigravity\|codex` | Open the app with a local debug port (Antigravity 9000, ChatGPT 9001) |
+| `crosstalk send --wait [sec] antigravity\|codex <target> <text>` | Send and print the reply to this specific message |
 | `crosstalk ui [--port 4477]` | Local chat room with every message in one timeline |
 | `crosstalk log [-n 20]` | Recent messages in the terminal |
 | `crosstalk install` / `uninstall` | Add or remove the agent skill |
 
 Text `-` reads the message from stdin: `cat plan.md | crosstalk send antigravity current -`.
 
-## Orchestrating without approvals
+## Asynchronous messages and `--wait`
 
-Let one Claude session lead and the others work, with nothing waiting for your click:
+With a regular send, the recipient can send questions, progress and answers back to the original agent:
 
 ```bash
 crosstalk send codex 'API review' 'Review src/api for missing auth checks; list file:line findings'
-crosstalk send antigravity new 'Build the settings page from docs/settings.md'
+crosstalk send --wait 120 antigravity 'Settings' 'Summarize the open issues in one paragraph'
 ```
 
-From a Claude session, sending to Antigravity or Codex types the task into the worker's chat, waits until the
-worker is idle again (up to 30 minutes), and prints its answer (the worker is told to just answer in its own chat).
-The answer never travels back as a message, so Claude has nothing to hold, whatever permission mode the
-orchestrator runs in. `--no-wait` sends and returns at once; `--wait <sec>` changes the limit. Claude workers talk
-to a Claude orchestrator with Claude's own `SendMessage`, which needs no approval between sessions in the same
-permission mode.
+Use `--wait` when a shell command needs the answer directly. It defaults to 30 minutes when enabled without a duration.
+Codex tracks the App Server turn ID, and Antigravity tracks the client message ID. A pending question or permission
+request is still answered in the app. A busy Codex thread takes normal messages in its queue. Use `--wait` on an idle,
+saved Codex thread to get a turn ID immediately.
 
 ## Roles
 
@@ -111,50 +109,62 @@ Agents are told to stop when the task is done (no "thanks" ping-pong) and to mak
 
 ## How it works
 
-- **Antigravity** is an Electron-style app. `crosstalk open antigravity` restarts it with
-  `--remote-debugging-port=9000` bound to `127.0.0.1`. crosstalk then uses the Chrome DevTools Protocol to read
-  the conversation list, type into the chat box and read the last answer, exactly as you would.
-- **Codex** lives in the ChatGPT app, which is Chromium-based too: `crosstalk open codex` gives it a debug
-  port on `127.0.0.1:9001` and switches it to Codex mode, and crosstalk drives the Codex thread the same way.
+- **Antigravity** combines the local Desktop conversation index with the visible list. Crosstalk calls the
+  running Desktop client's conversation service by ID via CDP. The shell's `ANTIGRAVITY_CONVERSATION_ID`
+  supplies the return address, with `--from <id>` available when the shell lacks it. `new` uses the app composer.
+- **Codex** uses the running Desktop App Server through the app's Electron bridge. It lists stored chats,
+  submits turns by ID and reads the matching response without selecting the chat. `current` explicitly targets
+  the visible Codex chat, and `CODEX_THREAD_ID` supplies the sender's return address.
 - **Claude** sessions only accept messages from other Claude sessions. crosstalk starts a tiny `claude -p`
   relay (Haiku, about 10 seconds) in safe mode (none of your CLAUDE.md, hooks or plugins) with two tools,
   `ListAgents` and `SendMessage`. The text goes in as data under a fixed system prompt, and crosstalk checks
-  afterwards that the relay made exactly one call with the exact text, or reports a failure.
-- **States** come from `claude agents --json` and, for what a waiting session asks, from the tail of its
-  transcript; Antigravity's state is read from its window (stop button, locked model picker, approval cards).
+  afterwards that the relay made exactly one call with the exact text. A relay receipt confirms submission.
+  crosstalk reports a hold or refusal if Claude returns that notice during the send.
+- **States** come from `claude agents --json`, Antigravity's conversation service and Codex App Server.
 - **The chat room** is a local web page served on `127.0.0.1`. Every message crosstalk carries is appended to
   `~/.crosstalk/log.jsonl` and streamed to the page.
 
 ## Security
 
-- The Antigravity debug port listens on `127.0.0.1` only, but while it is open any program or user account on
-  your Mac can drive Antigravity, and so run commands as you. Open Antigravity normally to close it.
+- The Antigravity and Codex debug ports listen on `127.0.0.1`. Local programs with access to those ports can drive
+  the apps. Quit and reopen the apps normally to close the ports.
 - The chat room binds to `127.0.0.1`, checks the `Host` header, refuses to be framed and needs a per-run token
   that is only in the link `crosstalk ui` prints (after `#`), so other web pages and accounts cannot use it.
 - A message from another agent is treated as a teammate's request, never as your approval, even when its
   header says "from the user". The skill tells agents to ask you before deploys, payments, deletions or
   permission changes, and never to send secrets. Session names are shell-quoted in reply commands, and
   `--from` must be a conversation id.
-- crosstalk does not send while it sees the agent busy or waiting for you, and takes a lock so two senders never
-  type at once. An unsent draft in Antigravity is set aside after you stop typing for 2 seconds and put back
-  after the message is sent (as plain text: mentions and attachments in a draft are not kept).
+- Existing Desktop conversations accept messages through their app services. Crosstalk serializes sends per app.
+  A message sent to a busy chat may queue while the current turn or approval is pending.
 
 ## FAQ
 
 **Can Claude Code talk to Google Antigravity?** Yes. That is what crosstalk does: `crosstalk send antigravity`
 from Claude, `crosstalk send claude` from Antigravity.
 
-**Why does Claude show "held — waiting for approval"?** Claude Code holds a message when the sending session
-runs in a different permission mode than the receiving one, and crosstalk's relay runs in the default mode. A
-Claude session in bypass mode therefore asks you before it reads a message from Antigravity or Codex. This is
-Claude's safety check and crosstalk does not work around it. Let Claude ask instead (see *Orchestrating without
-approvals*): its send waits for the answer and gets it as command output, so nothing is held.
+**Why are messages held when Claude uses `bypassPermissions`?** Claude Code's default inbound policy
+holds messages from the relay when its permission class differs from the receiver's. An interactive terminal
+can show an approval dialog. Claude Desktop cannot, so a default-held message usually expires after five
+minutes. `submitted` means the relay returned a receipt and delivery is unconfirmed.
 
-**Does it work with Codex?** Yes, with the Codex mode of the ChatGPT desktop app. `crosstalk open codex`
-restarts the app with a local debug port and switches it to Codex mode; crosstalk types into a Codex thread,
-reads its answer and its state (a Stop button means busy). Codex agents are recognised by their
-`CODEX_THREAD_ID`, so answers go back to the right thread. Codex is careful with messages from other agents
-and may ask you to confirm in its chat before it answers; that is Codex's own safeguard.
+For trusted workflows, Claude Code supports opting in on the receiving session with `crossSessionInbound`.
+Start a dedicated Claude Code session in the project directory:
+
+```bash
+claude --name crosstalk-inbox --permission-mode bypassPermissions --settings '{"crossSessionInbound":"accept"}'
+```
+
+Use the unique name `crosstalk-inbox` as the destination. For Claude Desktop sessions, the corresponding
+option is `"crossSessionInbound": "accept"` in `~/.claude/settings.json`, which applies across your Claude
+sessions. This setting accepts messages from other sessions covered by Claude's messaging policy, so only
+enable it where you trust those senders. Stricter managed or project settings can still hold or refuse
+messages. See [Claude's inbound controls](https://code.claude.com/docs/en/cross-session-messaging#control-inbound-messages)
+and [settings precedence](https://code.claude.com/docs/en/settings-reference#crosssessioninbound).
+
+An explicit `--wait` can also return the worker's answer as command output. See *Asynchronous messages and `--wait`*.
+
+**Does it work with Codex?** Yes, with local Codex chats in the Desktop app. Use the thread ID to target a
+background chat. For temporary chats, use regular send since App Server does not persist their turn history.
 
 **Does it cost tokens?** Sending to Claude costs one short Haiku call. Sending to Antigravity costs nothing
 extra. The agents themselves use their normal plans.
@@ -162,19 +172,15 @@ extra. The agents themselves use their normal plans.
 **Does anything run in the background?** No. Commands run when an agent or you call them. `crosstalk ui`
 runs only while it is open.
 
-**Can the orchestrator decide for me?** It answers the workers' questions and choices by the rules you gave
-it: workers send those to the orchestrator instead of stopping on a question for you. Permission prompts are
-different: crosstalk never clicks Allow for you and does not get around Claude's held messages. If you do not
-want prompts, set each app's own permission mode (Claude auto or bypass, Antigravity Turbo, Codex full access).
-Deploys, payments, deletions, permission changes and secrets still come back to you.
+**Can the orchestrator decide for me?** Workers can ask it to resolve choices covered by your instructions.
+Permission prompts still require your decision. Deploys, payments, deletions, permission changes and
+secrets still come back to you.
 
-**What do idle, busy and waiting mean?** Idle: ready for a message. Busy: working; a Claude session reads your
-message after its current turn, Antigravity refuses until it is idle. Waiting: the agent asked you something
-(a question, a choice, an approval); crosstalk shows the question and refuses to send, so no agent answers
-for you.
+**What do idle, busy and waiting mean?** An idle chat is ready. A busy chat is working. A waiting chat has a
+pending question or approval in its app. A queued message can arrive after the pending turn finishes.
 
-**Antigravity changed and `crosstalk` cannot find the chat box.** crosstalk reads Antigravity's page through
-its `data-testid` attributes, which an update can change. Please open an issue.
+**A Desktop adapter fails after an app update.** The live Desktop bridges can change. Include the app version
+and the exact Crosstalk error when opening an issue.
 
 ## Roadmap
 

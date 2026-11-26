@@ -16,17 +16,17 @@ const HELP = `crosstalk ${VERSION}: let Claude, Antigravity, Codex and you messa
   crosstalk send claude <session name> <text>    message an open Claude session
   crosstalk send antigravity <target> <text>     target: conversation id, its title, current or new
   crosstalk send codex <target> <text>           target: thread id, its title, current or new
-  From a Claude session, send to Antigravity/Codex waits for the answer and prints it (--no-wait to skip, --wait <sec>, default 1800)
+  --wait [sec] waits for the reply to a send to Antigravity/Codex and prints it (1800 s if omitted)
   crosstalk send user <text>                     post to the person watching \`crosstalk ui\`
-  crosstalk read antigravity|codex [target]      last reply
+  crosstalk read <app> <target> [-n 10] [--start K]  its messages, numbered from 1: the last n, or n from K
   crosstalk status antigravity|codex [target]    idle, busy or waiting for the user
-  crosstalk open antigravity|codex               restart the app so crosstalk can reach it (Codex: in Codex mode)
+  crosstalk open antigravity|codex               open the app with its local debug port
   crosstalk ui [--port 4477] [--no-open]         chat room: every message in one timeline
   crosstalk log [-n 20]                          recent messages
   crosstalk whoami                               who crosstalk thinks is sending
   crosstalk install | uninstall                  add or remove the agent skill
 
-Options go before the text. --from <id>: your conversation id when you are an Antigravity agent.
+Options go before the text. --from <id>: your Antigravity conversation id when it is unavailable in the shell.
 <text> as "-" reads the message from stdin.`;
 
 const SKILL_LINKS = [
@@ -37,7 +37,7 @@ const SKILL_LINKS = [
 
 // Options are read until the message text starts, so text like "fix the --port flag" stays intact.
 function parse(argv) {
-  const opt = { from: null, port: 4477, n: 20, open: true, wait: null };
+  const opt = { from: null, port: 4477, n: null, start: null, open: true, wait: null };
   const words = [];
   const textStarts = () => words[0] === 'send' && words.length >= (words[1] === 'user' ? 2 : 3);
   for (let i = 0; i < argv.length; i++) {
@@ -49,6 +49,7 @@ function parse(argv) {
     if (a === '--from') opt.from = argv[++i];
     else if (a === '--port') opt.port = Number(argv[++i]);
     else if (a === '-n') opt.n = Number(argv[++i]);
+    else if (a === '--start') opt.start = Number(argv[++i]);
     else if (a === '--no-open') opt.open = false;
     else if (a === '--wait') opt.wait = /^\d+$/.test(argv[i + 1] || '') ? Number(argv[++i]) : 1800;
     else if (a === '--no-wait') opt.wait = 0;
@@ -88,23 +89,37 @@ async function main() {
       if (text === '-') text = readStdin();
       if (!agent || (agent !== 'user' && !target) || !text) throw new Error('Usage: crosstalk send <claude|antigravity|codex|user> [target] <text>');
       const from = core.whoami(opt.from);
-      // A Claude session gets the answer as this command's output: a message sent back to it would be held for approval.
-      const wait = opt.wait ?? (from.agent === 'claude' && ['antigravity', 'codex'].includes(agent) ? 1800 : 0);
+      const wait = opt.wait ?? 0;
+      if (!wait && agent !== 'user' && from.agent === 'antigravity' && !from.id) {
+        throw new Error('Antigravity conversation ID unavailable. Use --from <your conversation ID> so replies reach you.');
+      }
+      if (wait && !['antigravity', 'codex'].includes(agent)) throw new Error('--wait works for Antigravity and Codex only.');
       const sent = await core.send(agent, target, text, from, wait > 0);
-      const { to } = sent;
-      console.log(`sent to ${to.agent} ${JSON.stringify(clean(to.name))}${to.id ? ` (${to.id})` : ''}${to.status === 'busy' ? ': it is busy and reads it after its current turn' : ''}${wait ? ', waiting for the answer' : ''}`);
+      const { to, delivery } = sent;
+      const recipient = `${to.agent} ${JSON.stringify(clean(to.name))}${to.id ? ` (${to.id})` : ''}`;
+      if (delivery === 'held') console.log(`held by ${recipient}. Check Claude's inbound message settings.`);
+      else if (delivery === 'submitted') console.log(`submitted to ${recipient}. Delivery unconfirmed.`);
+      else if (delivery === 'queued') console.log(`queued to ${recipient}${wait ? ', waiting for the answer' : ''}`);
+      else console.log(`sent to ${recipient}${wait ? ', waiting for the answer' : ''}`);
       if (wait) console.log(`\n${clean(await core.waitReply(sent, wait * 1000))}`);
       return;
     }
-    case 'read':
+    case 'read': {
+      for (const v of [opt.n, opt.start]) if (v !== null && !(Number.isInteger(v) && v > 0)) throw new Error('-n and --start take a whole number from 1.');
+      const h = await core.history(args[0], args[1], { n: opt.n ?? 10, start: opt.start });
+      const first = h.messages[0]?.n;
+      console.log(`${args[0]} ${JSON.stringify(clean(h.name))} (${h.id}): ${h.messages.length ? `messages ${first}-${first + h.messages.length - 1} of ${h.total}` : `no messages to show (${h.total} in all)`}`);
+      for (const m of h.messages) {
+        const time = m.ts ? ` · ${new Date(m.ts).toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}` : '';
+        console.log(`\n#${m.n} ${m.role}${time}\n  ${clean(m.text).replace(/\n/g, '\n  ')}`);
+      }
+      return;
+    }
     case 'status': {
       const app = { antigravity, codex }[args[0]];
-      if (!app) throw new Error(`Usage: crosstalk ${cmd} antigravity|codex [target]`);
-      if (cmd === 'read') console.log(clean(await app.read(args[1])) || '(no reply yet)');
-      else {
-        const s = await app.status(args[1]);
-        console.log(`${s.status} | ${clean(s.name)} | ${s.id || '(new)'}${s.note ? `\n${clean(s.note)}` : ''}`);
-      }
+      if (!app) throw new Error('Usage: crosstalk status antigravity|codex [target]');
+      const s = await app.status(args[1]);
+      console.log(`${s.status} | ${clean(s.name)} | ${s.id || '(new)'}${s.note ? `\n${clean(s.note)}` : ''}`);
       return;
     }
     case 'open': {
@@ -119,14 +134,14 @@ async function main() {
       return;
     }
     case 'log':
-      for (const m of log.readAll().slice(-opt.n)) {
+      for (const m of log.readAll().slice(-(opt.n ?? 20))) {
         const who = (p) => clean(`${p?.agent || '?'}:${p?.name || ''}`);
         const time = new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        console.log(`${time} ${who(m.from)} -> ${who(m.to)}\n  ${clean(m.text).replace(/\n/g, '\n  ')}`);
+        console.log(`${time} ${who(m.from)} -> ${who(m.to)}${m.delivery ? ` (${clean(m.delivery)})` : ''}\n  ${clean(m.text).replace(/\n/g, '\n  ')}`);
       }
       return;
     case 'whoami':
-      console.log(JSON.stringify(core.whoami(opt.from)));
+      console.log(JSON.stringify(await core.describeSender(opt.from)));
       return;
     case 'install':
       for (const link of SKILL_LINKS) {
