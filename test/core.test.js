@@ -127,3 +127,18 @@ test('a Claude transcript keeps the user, other agents and Claude, not tools or 
     ['claude', 'Fixed.'],
   ]);
 });
+
+test('list tree: children under parents, newest first, loops cut', () => {
+  const groups = core.tree([
+    { id: 'a', project: 'crm', last: 1 },
+    { id: 'b', project: 'crm', last: 5, parent: 'a', kind: 'fork' },
+    { id: 'c', project: 'bot', last: 3 },
+    { id: 'd', project: 'crm', last: 2, parent: 'gone' },
+    { id: 'e', project: 'bot', last: 4, parent: 'f' },
+    { id: 'f', project: 'bot', last: 0, parent: 'e' },
+  ]);
+  assert.deepEqual(groups.map((g) => [g.project, g.rows.map((r) => `${r.id}${r.depth}`).join(' ')]), [
+    ['crm', 'a0 b1 d0'],
+    ['bot', 'e0 f1 c0'],
+  ]);
+});

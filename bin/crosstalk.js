@@ -12,7 +12,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const VERSION = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
 const HELP = `crosstalk ${VERSION}: let Claude, Antigravity, Codex and you message each other, live, in each app's own window.
 
-  crosstalk list [claude|antigravity|codex]      sessions you can message, and whether they are free
+  crosstalk list [app] [project]                 sessions by project, children under parents, newest first
   crosstalk send claude <session name> <text>    message an open Claude session
   crosstalk send antigravity <target> <text>     target: conversation id, its title, current or new
   crosstalk send codex <target> <text>           target: thread id, its title, current or new
@@ -63,23 +63,39 @@ function parse(argv) {
 // Strips terminal control characters from text that came from other agents or apps.
 const clean = (s) => String(s ?? '').replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g, '');
 const readStdin = () => readFileSync(0, 'utf8').trim();
+const ago = (ms) => {
+  if (!ms) return '';
+  const m = Math.max(0, Math.round((Date.now() - ms) / 60000));
+  return m < 1 ? 'now' : m < 60 ? `${m}m` : m < 2880 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`;
+};
 
 async function main() {
   const { opt, words } = parse(process.argv.slice(2));
   const [cmd, ...args] = words;
   switch (cmd) {
     case 'list': {
-      const all = await core.list(args[0]);
+      const app = ['claude', 'antigravity', 'codex'].includes(args[0]) ? args[0] : null;
+      const project = (app ? args[1] : args[0])?.toLowerCase();
+      const all = await core.list(app);
       for (const [agent, rows] of Object.entries(all)) {
         console.log(`${agent}:`);
-        if (rows.error) console.log(`  (${rows.error})`);
-        else if (!rows.length) console.log('  (none open)');
-        else for (const r of rows) {
-          console.log(`  ${(r.status || (r.open ? 'open' : '')).padEnd(8)} ${clean(r.name)} | ${clean(r.project || basename(r.cwd || ''))} | ${r.id}`);
-          if (r.note) console.log(`  ${''.padEnd(8)} ${clean(r.note)}`);
+        if (rows.error) {
+          console.log(`  (${rows.error})`);
+          continue;
+        }
+        const groups = core.tree(rows).filter((g) => !project || g.project.toLowerCase().includes(project));
+        if (!groups.length) console.log(project ? '  (no sessions in that project)' : '  (none)');
+        for (const g of groups) {
+          console.log(`  ${clean(g.project) || '(no folder)'}`);
+          for (const r of g.rows) {
+            const branch = r.depth ? `${'  '.repeat(r.depth - 1)}└ ${r.kind ? `(${clean(r.kind)}) ` : ''}` : '';
+            console.log(`    ${branch}${(r.status || (r.open ? 'open' : '')).padEnd(7)} ${ago(r.last).padStart(4)}  ${clean(r.name)} | ${r.id}`);
+            if (r.note) console.log(`    ${' '.repeat(branch.length + 14)}${clean(r.note)}`);
+          }
         }
       }
-      console.log('\nidle = ready · busy = working (a Claude session reads your message after its turn) · waiting = needs the user, do not answer for them');
+      console.log('\nidle = ready · busy = working (a Claude session reads your message after its turn) · waiting = needs the user, do not answer for them'
+        + ' · closed = not running: read it, or ask the user to open it to message it\nTime = since its last activity, newest first. └ = started from the session above (fork, side session or subagent).');
       return;
     }
     case 'send': {

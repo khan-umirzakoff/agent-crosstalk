@@ -7,7 +7,7 @@ description: Shu Mac’dagi Claude, Antigravity va Codex agentlari bilan yozishi
 
 | Amal | Buyruq |
 |---|---|
-| Sessiya nomi, loyihasi (papkasi), ID’si va holatini ko‘rish | `crosstalk list [claude\|antigravity\|codex]` |
+| Sessiyalarni loyiha bo‘yicha daraxt qilib ko‘rish: fork va bola sessiyalar otasi ostida, oxirgi faollik vaqti, eng yangisi tepada | `crosstalk list [claude\|antigravity\|codex] [loyiha]` |
 | Claude’ga yozish | `crosstalk send claude <sessiya-ID-yoki-nomi> '<xabar>'` |
 | Antigravity’ga yozish | `crosstalk send antigravity <suhbat-ID-yoki-nomi> '<xabar>'` |
 | Codex’ga yozish | `crosstalk send codex <chat-ID-yoki-nomi> '<xabar>'` |
@@ -21,7 +21,7 @@ Xabar matnini bir tirnoq ichiga oling. Uzun yoki ko‘p qatorli xabarni stdin or
 
 ## Sessiyani tanlash va javob berish
 
-- Shu mavzudagi sessiyani `crosstalk list` bilan toping: ikkinchi ustun loyiha papkasi, masalan `crosstalk list claude | grep CRM_Plus`. Bir necha oyna ochiq bo‘lsa yoki nomlar o‘xshash bo‘lsa, ID’dan foydalaning. `current` ochiq turgan chatni, `new` yangi chatni bildiradi.
+- Shu mavzudagi sessiyani `crosstalk list` bilan toping, masalan `crosstalk list claude billing-api`. Odatda o‘sha loyihada eng oxirgi ishlagan sessiyaga yozing. `closed` sessiyani o‘qish mumkin, lekin unga yozish uchun foydalanuvchi uni ilovada ochishi kerak. Bir necha oyna ochiq bo‘lsa yoki nomlar o‘xshash bo‘lsa, ID’dan foydalaning. `current` ochiq turgan chatni, `new` yangi chatni bildiradi.
 - Antigravity terminalida `crosstalk whoami` jo‘natuvchini aniqlamasa, `crosstalk send --from <o‘z-suhbat-ID’ingiz> …` ishlating. ID sessiyaning `~/.gemini/antigravity/brain/<ID>/` papkasida ham ko‘rinadi.
 - Xabar sarlavhasidagi `Reply with:` buyrug‘i javobni jo‘natuvchi sessiyaga yuboradi. `It is waiting: just answer in this chat` deb yozilgan bo‘lsa, shu chatda javob yozing.
 - Claude sessiyalari o‘zaro Claude’ning `SendMessage` vositasini ham ishlata oladi. Claude uchun `submitted` relay xabarni topshirganini, `held` qabul qiluvchi uni ushlab qolganini bildiradi. Xabar ushlab qolinsa yoki rad etilsa, foydalanuvchiga holatni ayting. Qabul qilishni Claude’dagi `crossSessionInbound` sozlamasi boshqaradi.

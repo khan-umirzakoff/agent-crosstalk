@@ -50,6 +50,7 @@ Or drive it yourself:
 
 ```bash
 crosstalk list                                         # who you can reach
+crosstalk list claude billing-api                      # one project: its sessions, forks and subagents
 crosstalk send antigravity 'API review' 'Check src/api for missing auth checks'
 crosstalk send claude 'billing refactor' 'Antigravity found 3 issues, see notes/review.md'
 crosstalk status antigravity current                   # busy or idle
@@ -65,7 +66,7 @@ so the receiver knows who wrote, from which session, and how to answer.
 
 | Command | What it does |
 |---|---|
-| `crosstalk list [claude\|antigravity\|codex]` | Open Claude sessions, recent Antigravity conversations and Codex threads, with idle / busy / waiting |
+| `crosstalk list [claude\|antigravity\|codex] [project]` | Sessions grouped by project as each app's sidebar shows them: forks, side sessions and subagents under their parent, time since last activity, newest first, with idle / busy / waiting / closed |
 | `crosstalk send claude "<session>" <text>` | Message a Claude session by its name |
 | `crosstalk send antigravity <target> <text>` | Target: conversation id, its title (or a unique part), `current` or `new` |
 | `crosstalk send codex <target> <text>` | Same targets, for Codex threads |
