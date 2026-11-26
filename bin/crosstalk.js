@@ -12,7 +12,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const VERSION = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
 const HELP = `crosstalk ${VERSION}: let Claude, Antigravity, Codex and you message each other, live, in each app's own window.
 
-  crosstalk list [app] [project]                 sessions by project, children under parents, newest first
+  crosstalk list [app] [project] [--desktop|--cli]  sessions by project: desktop or terminal, forks under parents, newest first
   crosstalk send claude <session name> <text>    message an open Claude session
   crosstalk send antigravity <target> <text>     target: conversation id, its title, current or new
   crosstalk send codex <target> <text>           target: thread id, its title, current or new
@@ -20,7 +20,7 @@ const HELP = `crosstalk ${VERSION}: let Claude, Antigravity, Codex and you messa
   crosstalk send user <text>                     post to the person watching \`crosstalk ui\`
   crosstalk read <app> <target> [-n 10] [--start K]  what you have not read yet (newest n), or n from message K
   crosstalk status antigravity|codex [target]    idle, busy or waiting for the user
-  crosstalk open antigravity|codex               open the app with its local debug port
+  crosstalk open antigravity|codex               optional: reopen the app with a debug port (live receipts, idle Codex desktop threads)
   crosstalk ui [--port 4477] [--no-open]         chat window: open any session, read it, write in it
   crosstalk log [-n 20]                          recent messages
   crosstalk whoami                               who crosstalk thinks is sending
@@ -37,7 +37,7 @@ const SKILL_LINKS = [
 
 // Options are read until the message text starts, so text like "fix the --port flag" stays intact.
 function parse(argv) {
-  const opt = { from: null, port: 4477, n: null, start: null, open: true, wait: null };
+  const opt = { from: null, port: 4477, n: null, start: null, open: true, wait: null, surface: null };
   const words = [];
   const textStarts = () => words[0] === 'send' && words.length >= (words[1] === 'user' ? 2 : 3);
   for (let i = 0; i < argv.length; i++) {
@@ -51,6 +51,7 @@ function parse(argv) {
     else if (a === '-n') opt.n = Number(argv[++i]);
     else if (a === '--start') opt.start = Number(argv[++i]);
     else if (a === '--no-open') opt.open = false;
+    else if (a === '--desktop' || a === '--cli') opt.surface = a.slice(2);
     else if (a === '--wait') opt.wait = /^\d+$/.test(argv[i + 1] || '') ? Number(argv[++i]) : 1800;
     else if (a === '--no-wait') opt.wait = 0;
     else if (a === '-h' || a === '--help') return { opt, words: ['help'] };
@@ -83,19 +84,20 @@ async function main() {
           console.log(`  (${rows.error})`);
           continue;
         }
-        const groups = core.tree(rows).filter((g) => !project || g.project.toLowerCase().includes(project));
+        const groups = core.tree(rows.filter((r) => !opt.surface || r.surface === opt.surface)).filter((g) => !project || g.project.toLowerCase().includes(project));
         if (!groups.length) console.log(project ? '  (no sessions in that project)' : '  (none)');
         for (const g of groups) {
           console.log(`  ${clean(g.project) || '(no folder)'}`);
           for (const r of g.rows) {
             const branch = r.depth ? `${'  '.repeat(r.depth - 1)}└ ${r.kind ? `(${clean(r.kind)}) ` : ''}` : '';
-            console.log(`    ${branch}${(r.status || (r.open ? 'open' : '')).padEnd(7)} ${ago(r.last).padStart(4)}  ${clean(r.name)} | ${r.id}`);
+            console.log(`    ${branch}${(r.status || (r.open ? 'open' : '')).padEnd(7)} ${ago(r.last).padStart(4)}  ${(r.surface || '').padEnd(7)} ${clean(r.name)} | ${r.id}`);
             if (r.note) console.log(`    ${' '.repeat(branch.length + 14)}${clean(r.note)}`);
           }
         }
       }
       console.log('\nidle = ready · busy = working (a Claude session reads your message after its turn) · waiting = needs the user, do not answer for them'
-        + ' · closed = not running: read it, or ask the user to open it to message it\nTime = since its last activity, newest first. └ = started from the session above (fork, side session or subagent).');
+        + ' · closed = not running: read it, or ask the user to open it to message it\ndesktop = in the app\'s window · cli = a terminal session · ide = an editor · exec = a one-off run'
+        + '\nTime = since its last activity, newest first. └ = started from the session above (fork, side session or subagent).');
       return;
     }
     case 'send': {

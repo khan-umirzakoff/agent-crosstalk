@@ -28,9 +28,12 @@ flowchart LR
 ```bash
 npm install -g github:khan-umirzakoff/agent-crosstalk
 crosstalk install              # adds the crosstalk skill to Claude, Antigravity and Codex
-crosstalk open antigravity     # restarts Antigravity with a local debug port so crosstalk can reach it
-crosstalk open codex           # same for the ChatGPT app, switched to Codex mode
 ```
+
+Nothing else is required: crosstalk reads each app's own files and uses its official commands (`codex app-server`,
+`codex queue`, `codex exec`, Antigravity's bundled `agentapi`, `agy`). Optional, for live receipts and starting an idle
+Codex desktop thread right away: `crosstalk open antigravity` / `crosstalk open codex` restart the app with a local
+debug port.
 
 Requirements: macOS, Node.js 22 or newer, a recent [Claude Code](https://claude.com/claude-code) CLI with
 `claude agents --json` (tested with 2.1.328), [Google Antigravity](https://antigravity.google) and, for Codex,
@@ -51,6 +54,7 @@ Or drive it yourself:
 ```bash
 crosstalk list                                         # who you can reach
 crosstalk list claude billing-api                      # one project: its sessions, forks and subagents
+crosstalk list --cli                                   # only terminal sessions (agy, codex, claude in a terminal)
 crosstalk send antigravity 'API review' 'Check src/api for missing auth checks'
 crosstalk send claude 'billing refactor' 'Antigravity found 3 issues, see notes/review.md'
 crosstalk status antigravity current                   # busy or idle
@@ -66,7 +70,7 @@ so the receiver knows who wrote, from which session, and how to answer.
 
 | Command | What it does |
 |---|---|
-| `crosstalk list [claude\|antigravity\|codex] [project]` | Sessions grouped by project as each app's sidebar shows them: forks, side sessions and subagents under their parent, time since last activity, newest first, with idle / busy / waiting / closed |
+| `crosstalk list [claude\|antigravity\|codex] [project] [--desktop\|--cli]` | Desktop and terminal sessions (each row says which), grouped by project as each app's sidebar shows them: forks, side sessions and subagents under their parent, time since last activity, newest first, with idle / busy / waiting / closed |
 | `crosstalk send claude "<session>" <text>` | Message a Claude session by its name |
 | `crosstalk send antigravity <target> <text>` | Target: conversation id, its title (or a unique part), `current` or `new` |
 | `crosstalk send codex <target> <text>` | Same targets, for Codex threads |
