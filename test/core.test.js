@@ -123,7 +123,7 @@ test('a Claude transcript keeps the user, other agents and Claude, not tools or 
   assert.deepEqual(parseTranscript(jsonl).map((m) => [m.role, m.text]), [
     ['user', 'Fix the login'],
     ['claude', 'On it.\nReading auth.js'],
-    ['user', '[crosstalk] From Codex. Hi'],
+    ['peer', '[crosstalk] From Codex. Hi'],
     ['claude', 'Fixed.'],
   ]);
 });
@@ -141,4 +141,24 @@ test('list tree: children under parents, newest first, loops cut', () => {
     ['crm', 'a0 b1 d0'],
     ['bot', 'e0 f1 c0'],
   ]);
+});
+
+test('read markers: a reread sends only new messages, the newest n first, and survives streaming and rewrites', () => {
+  const msgs = (count, grow = '') => Array.from({ length: count }, (_, i) => ({ n: i + 1, role: i % 2 ? 'codex' : 'user', text: `m${i + 1}${i + 1 === count ? grow : ''}` }));
+  const ids = (v) => v.messages.map((m) => m.n);
+  let v = core.unreadView(msgs(30), null, { n: 10 });
+  assert.deepEqual([ids(v), v.seen, v.unread], [[21, 22, 23, 24, 25, 26, 27, 28, 29, 30], 0, 30]);
+  v = core.unreadView(msgs(30), v.cursor, { n: 10 });
+  assert.deepEqual([ids(v), v.unread, v.cursor.n], [[], 0, 30]);
+  v = core.unreadView(msgs(33), v.cursor, { n: 10 });
+  assert.deepEqual([ids(v), v.unread], [[31, 32, 33], 3]);
+  v = core.unreadView(msgs(33, ' and more'), v.cursor, { n: 10 }); // the last one grew while it streamed
+  assert.deepEqual([ids(v), v.unread], [[33], 1]);
+  const old = v.cursor;
+  v = core.unreadView(msgs(33, ' and more'), old, { n: 5, start: 1 }); // an older range keeps the marker
+  assert.deepEqual([ids(v), v.cursor], [[1, 2, 3, 4, 5], old]);
+  v = core.unreadView(msgs(33, ' and more').slice(3).map((m, i) => ({ ...m, n: i + 1 })), old, { n: 10 }); // history lost 3 at the top
+  assert.deepEqual([ids(v), v.seen, v.changed], [[], 30, false]);
+  v = core.unreadView([{ n: 1, role: 'user', text: 'new' }], old, { n: 10 }); // rewritten
+  assert.deepEqual([ids(v), v.changed], [[1], true]);
 });

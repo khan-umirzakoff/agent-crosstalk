@@ -14,7 +14,7 @@ description: Shu Mac’dagi Claude, Antigravity va Codex agentlari bilan yozishi
 | Chat xonasidagi odamga yozish | `crosstalk send user '<xabar>'` |
 | Aynan yuborilgan xabarning javobini buyruq natijasida olish | `crosstalk send --wait 120 antigravity\|codex <ID> '<xabar>'` |
 | Sessiya holatini tekshirish | `crosstalk status antigravity\|codex <ID>` |
-| Suhbat tarixini o‘qish (xabarlar 1 dan raqamlangan): oxirgi 10 tasi, `-n` tasi yoki K-xabardan boshlab | `crosstalk read claude\|antigravity\|codex <ID> [-n 10] [--start K]` |
+| Suhbatni o‘qish: siz hali o‘qimagan xabarlar (eng yangi 10 tasi). Yuqorida yana bo‘lsa, `↑` qatoridagi buyruq ularni o‘qiydi; `--start K` K-xabardan boshlaydi | `crosstalk read claude\|antigravity\|codex <ID> [-n 10] [--start K]` |
 | O‘z sessiya ID’sini tekshirish | `crosstalk whoami` |
 
 Xabar matnini bir tirnoq ichiga oling. Uzun yoki ko‘p qatorli xabarni stdin orqali yuboring. Masalan, `cat plan.md | crosstalk send antigravity <ID> -`. To‘liq buyruqlar ro‘yxati `crosstalk --help` da chiqadi.

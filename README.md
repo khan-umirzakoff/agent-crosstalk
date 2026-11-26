@@ -9,7 +9,7 @@ or all of it at once in a small local chat room.
 - **Find and continue old sessions.** List the open Claude sessions, recent Antigravity conversations and Codex threads, pick one, keep going.
 - **Neutral roles.** Either side can be the orchestrator, the worker, a peer to argue with, or just a source of information.
 - **Session state.** List sessions with the state available from each app. `status <app> <id>` checks the live state of a specific desktop session.
-- **One timeline.** `crosstalk ui` shows every message between agents in one chat view, and you can write into it too.
+- **One window for all of them.** `crosstalk ui` lists every session as each app's sidebar does (projects, forks, subagents, collapsible). Click one to read its whole chat and write in it; one more view shows every message agents sent each other.
 - **Zero npm dependencies.** Node.js 22+, MIT licensed. Commands run on demand.
 
 ```mermaid
@@ -54,7 +54,7 @@ crosstalk list claude billing-api                      # one project: its sessio
 crosstalk send antigravity 'API review' 'Check src/api for missing auth checks'
 crosstalk send claude 'billing refactor' 'Antigravity found 3 issues, see notes/review.md'
 crosstalk status antigravity current                   # busy or idle
-crosstalk read antigravity current -n 5                # its last 5 messages
+crosstalk read antigravity current -n 5                # what you have not read yet, newest 5
 crosstalk ui                                           # open the chat room
 ```
 
@@ -71,11 +71,11 @@ so the receiver knows who wrote, from which session, and how to answer.
 | `crosstalk send antigravity <target> <text>` | Target: conversation id, its title (or a unique part), `current` or `new` |
 | `crosstalk send codex <target> <text>` | Same targets, for Codex threads |
 | `crosstalk send user <text>` | Post to the person watching `crosstalk ui` |
-| `crosstalk read claude\|antigravity\|codex <target> [-n 10] [--start K]` | The conversation's messages (yours and the agent's), numbered from 1: the last n, or n from message K |
+| `crosstalk read claude\|antigravity\|codex <target> [-n 10] [--start K]` | The messages the reader has not read yet (newest n), numbered from 1, with a ready command for the ones above; a reread with nothing new costs one line. `--start K` reads n from message K |
 | `crosstalk status antigravity\|codex [target]` | Whether the agent is idle, busy or waiting |
 | `crosstalk open antigravity\|codex` | Open the app with a local debug port (Antigravity 9000, ChatGPT 9001) |
 | `crosstalk send --wait [sec] antigravity\|codex <target> <text>` | Send and print the reply to this specific message |
-| `crosstalk ui [--port 4477]` | Local chat room with every message in one timeline |
+| `crosstalk ui [--port 4477]` | Local chat window: every session in a tree, its full chat, and the agent-to-agent log |
 | `crosstalk log [-n 20]` | Recent messages in the terminal |
 | `crosstalk install` / `uninstall` | Add or remove the agent skill |
 

@@ -18,10 +18,10 @@ const HELP = `crosstalk ${VERSION}: let Claude, Antigravity, Codex and you messa
   crosstalk send codex <target> <text>           target: thread id, its title, current or new
   --wait [sec] waits for the reply to a send to Antigravity/Codex and prints it (1800 s if omitted)
   crosstalk send user <text>                     post to the person watching \`crosstalk ui\`
-  crosstalk read <app> <target> [-n 10] [--start K]  its messages, numbered from 1: the last n, or n from K
+  crosstalk read <app> <target> [-n 10] [--start K]  what you have not read yet (newest n), or n from message K
   crosstalk status antigravity|codex [target]    idle, busy or waiting for the user
   crosstalk open antigravity|codex               open the app with its local debug port
-  crosstalk ui [--port 4477] [--no-open]         chat room: every message in one timeline
+  crosstalk ui [--port 4477] [--no-open]         chat window: open any session, read it, write in it
   crosstalk log [-n 20]                          recent messages
   crosstalk whoami                               who crosstalk thinks is sending
   crosstalk install | uninstall                  add or remove the agent skill
@@ -122,12 +122,27 @@ async function main() {
     }
     case 'read': {
       for (const v of [opt.n, opt.start]) if (v !== null && !(Number.isInteger(v) && v > 0)) throw new Error('-n and --start take a whole number from 1.');
-      const h = await core.history(args[0], args[1], { n: opt.n ?? 10, start: opt.start });
+      const n = opt.n ?? 10;
+      const h = await core.read(args[0], args[1], { n, start: opt.start, reader: core.whoami(opt.from) });
       const first = h.messages[0]?.n;
-      console.log(`${args[0]} ${JSON.stringify(clean(h.name))} (${h.id}): ${h.messages.length ? `messages ${first}-${first + h.messages.length - 1} of ${h.total}` : `no messages to show (${h.total} in all)`}`);
+      const last = h.messages.at(-1)?.n;
+      const cmd = (start, count) => `crosstalk read ${args[0]} ${h.id} --start ${start} -n ${count}`;
+      const range = first ? `messages ${first}-${last} of ${h.total}` : `${h.total} messages`;
+      console.log(`${args[0]} ${JSON.stringify(clean(h.name))} (${h.id}): ${opt.start ? range
+        : h.changed ? `history changed since your last read · newest ${range}`
+        : !h.seen ? range
+        : !h.unread ? `nothing new since your last read (message ${h.seen} of ${h.total})`
+        : `${h.unread} new since your last read · ${range}`}`);
+      if (first > 1) {
+        const unreadAbove = opt.start ? 0 : first - 1 - h.seen;
+        const from = Math.max(unreadAbove > 0 ? h.seen + 1 : 1, first - n);
+        console.log(unreadAbove > 0 ? `↑ ${unreadAbove} more unread above: ${cmd(from, first - from)}` : `↑ ${first - 1} earlier: ${cmd(from, first - from)}`);
+      }
+      if (last < h.total) console.log(`↓ ${h.total - last} later: ${cmd(last + 1, n)}`);
+      if (!first && h.total) console.log(`To reread the newest: ${cmd(Math.max(1, h.total - n + 1), n)}`);
       for (const m of h.messages) {
         const time = m.ts ? ` · ${new Date(m.ts).toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}` : '';
-        console.log(`\n#${m.n} ${m.role}${time}\n  ${clean(m.text).replace(/\n/g, '\n  ')}`);
+        console.log(`\n#${m.n} ${m.role}${m.from ? ` (${clean(m.from)})` : ''}${time}\n  ${clean(m.text).replace(/\n/g, '\n  ')}`);
       }
       return;
     }
