@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 import { lstatSync, mkdirSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as antigravity from '../lib/antigravity.js';
 import * as codex from '../lib/codex.js';
 import * as core from '../lib/core.js';
 import * as log from '../lib/log.js';
+import * as mail from '../lib/mail.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const VERSION = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
@@ -22,6 +23,7 @@ const HELP = `crosstalk ${VERSION}: let Claude, Antigravity, Codex and you messa
   crosstalk archive|unarchive <app> <id>         hide or bring back a session by its id (Codex; Claude background sessions: stop)
   crosstalk delete <app> <id> --permanent        delete it (Codex, Antigravity desktop; Claude background: remove from the list)
   crosstalk read <app> <target> [-n 10] [--start K]  what you have not read yet (newest n), or n from message K
+  crosstalk mail join [--cwd DIR] · who · watch   Agent Mail: link this session to a project mailbox; ring sessions on new mail
   crosstalk list --json · history <app> <target> [-n 60] [--start K] · send --json   the same, as JSON for programs
   crosstalk status antigravity|codex [target]    idle, busy or waiting for the user
   crosstalk ui [--port 4477] [--no-open]         chat window: open any session, read it, write in it
@@ -40,7 +42,7 @@ const SKILL_LINKS = [
 
 // Options are read until the message text starts, so text like "fix the --port flag" stays intact.
 function parse(argv) {
-  const opt = { from: null, port: 4477, n: null, start: null, open: true, wait: null, surface: null, cwd: null, permanent: false, force: false, json: false };
+  const opt = { from: null, port: 4477, n: null, start: null, open: true, wait: null, surface: null, cwd: null, permanent: false, force: false, json: false, name: null, once: false };
   const words = [];
   const textStarts = () => (words[0] === 'send' && words.length >= (words[1] === 'user' ? 2 : 3)) || (words[0] === 'new' && words.length >= 2);
   for (let i = 0; i < argv.length; i++) {
@@ -61,6 +63,8 @@ function parse(argv) {
     else if (a === '--permanent') opt.permanent = true;
     else if (a === '--force') opt.force = true;
     else if (a === '--json') opt.json = true;
+    else if (a === '--name') opt.name = argv[++i];
+    else if (a === '--once') opt.once = true;
     else if (a === '--wait') opt.wait = /^\d+$/.test(argv[i + 1] || '') ? Number(argv[++i]) : 1800;
     else if (a === '--no-wait') opt.wait = 0;
     else if (a === '-h' || a === '--help') return { opt, words: ['help'] };
@@ -162,6 +166,37 @@ async function main() {
       const row = await core.manage(cmd, agent, target, { force: opt.force, actor: core.whoami(opt.from) });
       console.log(`${cmd}d ${agent} ${JSON.stringify(clean(row.name))} (${row.id})`);
       return;
+    }
+    case 'mail': {
+      const sub = args[0];
+      if (sub === 'join') {
+        const project = resolvePath(opt.cwd || process.cwd());
+        const me = core.whoami(opt.from);
+        const name = mail.join(me, { project, name: opt.name });
+        console.log(`${me.agent} session ${JSON.stringify(clean(me.name || me.id))} is "${name}" in the mailbox of ${project}.`);
+        console.log(`Send:  am mail send -p ${core.shellQuote(project)} --from ${name} --to <Name> -s '<subject>' -b '<text>' [--thread-id ID] [--ack-required]`);
+        console.log(`Read:  am mail inbox -p ${core.shellQuote(project)} --agent ${name} --include-bodies`);
+        console.log('New mail rings this session while crosstalk mail watch runs.');
+        return;
+      }
+      if (sub === 'who') {
+        for (const m of mail.members()) console.log(`${m.agent.padEnd(16)} ${m.app.padEnd(12)} ${clean(m.label)} | ${m.session} | ${m.project}`);
+        return;
+      }
+      if (sub === 'watch') {
+        const q = core.shellQuote;
+        console.log(opt.once ? 'Ringing for mail delivered so far…' : 'Ringing sessions when mail arrives (Ctrl-C to stop)…');
+        await mail.watch(async (m, e) => {
+          const sender = { agent: 'mail', name: `Agent Mail (${e.from})`, reply: `am mail reply -p ${q(m.project)} --from ${m.agent} --message-id ${e.message_id} -b '<reply>'` };
+          const text = `New mail for ${m.agent} from ${e.from}: ${JSON.stringify(e.subject)}${e.importance && e.importance !== 'normal' ? ` [${e.importance}]` : ''}`
+            + `${e.ack_required ? ', and it asks for an acknowledgement' : ''}.\nRead it: am mail inbox -p ${q(m.project)} --agent ${m.agent} --include-bodies`
+            + `${e.ack_required ? `\nAcknowledge: am mail ack -p ${q(m.project)} --agent ${m.agent} ${e.message_id}` : ''}`;
+          const { delivery } = await core.send(m.app, m.session, text, sender, false, { replyBack: true });
+          console.log(`rang ${m.agent} (${m.app}) for mail ${e.message_id}${delivery ? ` · ${delivery}` : ''}`);
+        }, { once: opt.once, onError: (m, err) => console.error(`${m.agent}: ${err.message}`) });
+        return;
+      }
+      throw new Error('Usage: crosstalk mail join [--cwd DIR] [--name NAME] | who | watch [--once]');
     }
     case 'history': {
       // The plain history for programs: no read markers move, so a UI can show it as often as it likes.

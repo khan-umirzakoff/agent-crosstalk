@@ -134,6 +134,23 @@ Agents are told to stop when the task is done (no "thanks" ping-pong) and to mak
 - **The chat room** is a local web page served on `127.0.0.1`. Every message crosstalk carries is appended to
   `~/.crosstalk/log.jsonl` and streamed to the page.
 
+## Agent Mail: inboxes, threads and file reservations
+
+For lasting coordination crosstalk works with [MCP Agent Mail](https://github.com/Dicklesworthstone/mcp_agent_mail_rust)
+(the `am` and `mcp-agent-mail` commands): per-project inboxes, threads, acknowledgements, search, file reservations and
+a web view at `http://127.0.0.1:8765/mail/`. Agent Mail keeps the mail; crosstalk links each mailbox name to a live
+session and rings that session when mail arrives, so no agent has to poll.
+
+```bash
+mcp-agent-mail serve --no-tui        # the mailbox server (127.0.0.1:8765)
+crosstalk mail join                  # inside a session: this session gets a name in the current project's mailbox
+crosstalk mail watch                 # rings the linked sessions on new mail (keep it running)
+crosstalk mail who                   # which name belongs to which session
+```
+
+A ring carries the sender, the subject, whether it asks for an acknowledgement, and the exact `am mail inbox`,
+`am mail ack` and `am mail reply` commands for it. Mailbox notices such as contact handshakes do not ring.
+
 ## Security
 
 - No app runs with a debug port. crosstalk reaches Antigravity's language server with the token the app writes to its

@@ -214,3 +214,29 @@ test('a Claude message goes into the session inbox as one frame, without a token
   assert.equal(await postToInbox(7, 'x', dir), false);
   assert.equal(await postToInbox(8, 'x', dir), false);
 });
+
+test('mail watch rings once per delivered mail, skips mailbox notices, and keeps its cursor', async () => {
+  const { chmodSync, mkdtempSync: tmp, writeFileSync: write } = await import('node:fs');
+  const bin = tmp(join(tmpdir(), 'am-'));
+  // A stand-in for the am CLI: register answers a name, inbox-events pages from cursor 0 or returns nothing after 3.
+  write(join(bin, 'am'), `#!/bin/sh
+case "$1 $2" in
+  "agents register") echo '{"name":"BlueLake"}';;
+  "inbox-events --project") case "$*" in *--position-now*) echo '{"tail_cursor":0,"events":[]}';; *"--after 0"*) echo '{"events":[{"cursor":1,"message_id":1,"subject":"Contact approved: A -> B","from":"A"},{"cursor":3,"message_id":2,"subject":"Hi","from":"A"}]}';; *) echo '{"events":[]}';; esac;;
+esac
+`);
+  chmodSync(join(bin, 'am'), 0o755);
+  const path = process.env.PATH;
+  process.env.PATH = `${bin}:${path}`;
+  try {
+    const mail = await import('../lib/mail.js');
+    assert.equal(mail.join({ agent: 'codex', id: '01a2', name: 'Fix login' }, { project: '/p' }), 'BlueLake');
+    const rang = [];
+    await mail.watch(async (m, e) => rang.push([m.agent, m.session, e.message_id]), { once: true });
+    await mail.watch(async (m, e) => rang.push(['again', e.message_id]), { once: true });
+    assert.deepEqual(rang, [['BlueLake', '01a2', 2]]);
+    assert.equal(mail.members()[0].cursor, 3);
+  } finally {
+    process.env.PATH = path;
+  }
+});

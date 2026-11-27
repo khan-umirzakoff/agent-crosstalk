@@ -17,6 +17,7 @@ description: Shu Mac’dagi Claude, Antigravity va Codex agentlari bilan yozishi
 | Yangi sessiya ochish: ilova oynasida yoki `--cli` bilan terminalda (agy, codex exec; Claude doim `claude --bg`). Terminal sessiya javobi sizga o‘zi qaytadi | `crosstalk new claude\|antigravity\|codex [--cli] [--cwd DIR] <matn>` |
 | Arxivlash yoki qaytarish (Codex; Claude fon sessiyasini to‘xtatish) | `crosstalk archive\|unarchive <app> <ID>` |
 | O‘chirish (Codex, Antigravity desktop; Claude fon sessiyasi ro‘yxatdan chiqadi). Qaytarib bo‘lmaydi: foydalanuvchi so‘ramagan bo‘lsa, avval arxivlang | `crosstalk delete <app> <ID> --permanent` |
+| Uzoq hamkorlik uchun pochta (Agent Mail): loyiha pochtasiga qo‘shilish; yangi xat kelsa sessiyangizga qo‘ng‘iroq keladi, unda o‘qish, tasdiqlash va javob buyruqlari bo‘ladi | `crosstalk mail join`, keyin `am mail send -p <loyiha> --from <nomingiz> --to <Nom> -s '<mavzu>' -b '<matn>'` |
 | Suhbatni o‘qish: siz hali o‘qimagan xabarlar (eng yangi 10 tasi). Yuqorida yana bo‘lsa, `↑` qatoridagi buyruq ularni o‘qiydi; `--start K` K-xabardan boshlaydi | `crosstalk read claude\|antigravity\|codex <ID> [-n 10] [--start K]` |
 | O‘z sessiya ID’sini tekshirish | `crosstalk whoami` |
 
