@@ -32,8 +32,8 @@ crosstalk install              # adds the crosstalk skill to Claude, Antigravity
 
 Nothing else is required: crosstalk reads each app's own files and uses its official commands (`codex app-server`,
 `codex queue`, `codex exec`, Antigravity's bundled `agentapi`, `agy`). Optional, for live receipts and starting an idle
-Codex desktop thread right away: `crosstalk open antigravity` / `crosstalk open codex` restart the app with a local
-debug port.
+Codex desktop thread right away: `crosstalk open codex` restarts the ChatGPT app with a local debug port. Antigravity
+needs nothing: crosstalk talks to the running app's language server, the way its own window does.
 
 Requirements: macOS, Node.js 22 or newer, a recent [Claude Code](https://claude.com/claude-code) CLI with
 `claude agents --json` (tested with 2.1.328), [Google Antigravity](https://antigravity.google) and, for Codex,
@@ -80,7 +80,7 @@ so the receiver knows who wrote, from which session, and how to answer.
 | `crosstalk delete <app> <id> --permanent` | Delete a Codex thread or an Antigravity desktop conversation; remove a Claude background session from the list. Busy sessions need `--force`; every delete is logged |
 | `crosstalk read claude\|antigravity\|codex <target> [-n 10] [--start K]` | The messages the reader has not read yet (newest n), numbered from 1, with a ready command for the ones above; a reread with nothing new costs one line. `--start K` reads n from message K |
 | `crosstalk status antigravity\|codex [target]` | Whether the agent is idle, busy or waiting |
-| `crosstalk open antigravity\|codex` | Open the app with a local debug port (Antigravity 9000, ChatGPT 9001) |
+| `crosstalk open codex` | Optional: reopen the ChatGPT app with a local debug port (9001) to start idle desktop threads right away |
 | `crosstalk send --wait [sec] antigravity\|codex <target> <text>` | Send and print the reply to this specific message |
 | `crosstalk ui [--port 4477]` | Local chat window: every session in a tree, its full chat, and the agent-to-agent log |
 | `crosstalk log [-n 20]` | Recent messages in the terminal |
