@@ -106,7 +106,9 @@ header h1 { margin: 0; font-size: 15px; font-weight: 600; white-space: nowrap; o
 .meta .who { color: var(--text); font-weight: 600; }
 .meta button.who:hover, .meta button.to-name:hover { text-decoration: underline; cursor: pointer; }
 .bubble { background: var(--bubble); border: 1px solid var(--line); border-radius: 14px; padding: 9px 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
-.bubble.relay { background: transparent; border-style: dashed; color: var(--muted); }
+.bubble.peer { border-left: 3px solid var(--peer, var(--muted)); }
+.empty-text { color: var(--muted); font-style: italic; }
+.meta .app { color: var(--muted); }
 .msg.mine .bubble { background: var(--mine); color: var(--mine-text); border-color: transparent; }
 .bubble code { font-family: var(--mono); font-size: 12.5px; background: var(--code); border-radius: 4px; padding: 1px 4px; }
 .msg.mine .bubble code { background: color-mix(in srgb, var(--mine-text) 18%, transparent); }
@@ -401,13 +403,28 @@ function avatar(kind) {
   return el('div', { className: 'avatar', textContent: INITIAL[kind] || '?', title: LABEL[kind] || kind, style: `background:${COLOR[kind] || 'var(--user)'}` });
 }
 
+// The text, or a visible note when a message arrived without one (an old relay could drop it).
+const bubbleText = (text, props = {}) => {
+  const b = el('div', { className: 'bubble', ...props });
+  if (text?.trim()) b.innerHTML = md(text);
+  else b.append(el('span', { className: 'empty-text', textContent: 'Empty message' }));
+  return b;
+};
+
 function chatMessage(m, agent) {
   const mine = m.role === 'user';
   const relay = m.role === 'crosstalk' || m.role === 'peer';
-  const who = mine ? 'You' : relay ? (m.from || 'Another agent') : LABEL[agent];
-  const meta = el('div', { className: 'meta' }, el('span', { className: 'who', textContent: who }), m.ts ? el('time', { dateTime: m.ts, textContent: when(m.ts) }) : null);
-  return el('div', { className: 'msg' + (mine ? ' mine' : '') }, mine ? null : avatar(relay ? 'relay' : agent),
-    el('div', { className: 'body' }, meta, el('div', { className: 'bubble' + (relay ? ' relay' : ''), innerHTML: md(m.text) })));
+  // Another agent's message: its own app's avatar and colour, its session name, a click away.
+  const sender = relay ? m.fromAgent : agent;
+  const key = relay && m.fromAgent && m.fromId ? keyOf(m.fromAgent, m.fromId) : null;
+  const name = mine ? 'You' : relay ? m.fromName || m.from || 'Another agent' : LABEL[agent];
+  const who = key && findRow(key) ? el('button', { className: 'who', type: 'button', textContent: name, title: `Open ${name}`, onclick: () => select(key) })
+    : el('span', { className: 'who', textContent: name, title: m.from || name });
+  const meta = el('div', { className: 'meta' }, who, relay && m.fromAgent ? el('span', { className: 'app', textContent: LABEL[m.fromAgent] }) : null,
+    m.ts ? el('time', { dateTime: m.ts, textContent: when(m.ts) }) : null);
+  const bubble = bubbleText(m.text, relay ? { className: 'bubble peer' } : {});
+  if (relay) bubble.style.setProperty('--peer', COLOR[sender] || 'var(--muted)');
+  return el('div', { className: 'msg' + (mine ? ' mine' : '') }, mine ? null : avatar(relay ? sender || 'relay' : agent), el('div', { className: 'body' }, meta, bubble));
 }
 
 async function loadChat() {
@@ -459,7 +476,9 @@ function addLog(m) {
   const mine = m.from?.agent === 'user';
   const meta = el('div', { className: 'meta' }, party(m.from, 'who'), svg('<path d="M2 6h8M7 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>'), party(m.to, 'to-name'),
     DELIVERY[m.delivery] ? el('span', { textContent: DELIVERY[m.delivery] }) : m.delivery?.startsWith('not delivered') ? el('span', { className: 'status error', textContent: 'Not delivered', title: m.delivery }) : null, el('time', { dateTime: m.ts, textContent: when(m.ts) }));
-  const node = el('div', { className: 'msg' + (mine ? ' mine' : '') + (live ? ' fresh' : '') }, avatar(m.from?.agent), el('div', { className: 'body' }, meta, el('div', { className: 'bubble', textContent: m.text })));
+  const plain = bubbleText('');
+  if (m.text?.trim()) plain.replaceChildren(m.text);
+  const node = el('div', { className: 'msg' + (mine ? ' mine' : '') + (live ? ' fresh' : '') }, avatar(m.from?.agent), el('div', { className: 'body' }, meta, plain));
   const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   box.append(node);
   if (atBottom || mine) scrollEnd(box);

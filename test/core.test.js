@@ -166,12 +166,21 @@ test('read markers: a reread sends only new messages, the newest n first, and su
   assert.deepEqual([ids(v), v.changed], [[1], true]);
 });
 
-test('history drops the crosstalk header but keeps the sender; the person in the room is the user', () => {
+test('history drops the crosstalk header but keeps the sender; the person in the room is the user', async () => {
   const from = (agent, id, name) => core.unstamp({ role: 'user', text: `${core.header({ agent, id, name })}\nHello` });
   assert.deepEqual(from('user', null, 'you'), { role: 'user', from: null, text: 'Hello' });
   const codex = from('codex', '01a2', 'Fix login');
   assert.deepEqual([codex.role, codex.text], ['crosstalk', 'Hello']);
   assert.match(codex.from, /Codex/);
+  assert.deepEqual([codex.fromAgent, codex.fromName, codex.fromId], ['codex', 'Fix login', '01a2']);
+  const odd = core.unstamp({ role: 'peer', text: `${core.header({ agent: 'antigravity', id: 'ab12', name: "Bob's chat" })}\nHi` });
+  assert.deepEqual([odd.fromAgent, odd.fromName, odd.fromId, odd.text], ['antigravity', "Bob's chat", 'ab12', 'Hi']);
+  const { clean } = await import('../lib/claude.js');
+  const folded = `${core.header({ agent: 'claude', id: '167d', name: 'Planner' })} check the deploy`;
+  assert.equal(clean(folded), 'check the deploy');
+  assert.equal(clean(`${core.header({ agent: 'codex', id: '01a2', name: 'X' }, true)}\nreview this`), 'review this');
+  const nested = core.unstamp({ role: 'peer', text: `${core.header({ agent: 'claude', id: '9c98', name: folded })}\nOK` });
+  assert.deepEqual([nested.fromName, nested.fromId, nested.text], ['check the deploy', '9c98', 'OK']);
   assert.deepEqual(core.unstamp({ role: 'claude', text: '[crosstalk] From x. Reply with: y\nHi' }).role, 'claude');
 });
 
