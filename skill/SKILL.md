@@ -1,15 +1,16 @@
 ---
 name: crosstalk
-description: Shu Mac’dagi Claude, Antigravity va Codex agentlari bilan yozishish, savol-javob qilish va vazifa uzatish. Foydalanuvchi boshqa agentga yozishni, undan so‘rashni, unga vazifa berishni yoki ishni u bilan muvofiqlashtirishni so‘rasa yoxud xabar "[crosstalk" bilan boshlansa ishlating.
+description: Shu Mac’dagi Claude, Antigravity, Codex, OpenCode va Hermes agentlari bilan yozishish, savol-javob qilish va vazifa uzatish. Foydalanuvchi boshqa agentga yozishni, undan so‘rashni, unga vazifa berishni yoki ishni u bilan muvofiqlashtirishni so‘rasa yoxud xabar "[crosstalk" bilan boshlansa ishlating.
 ---
 
 # Crosstalk
 
 | Amal | Buyruq |
 |---|---|
-| Sessiyalarni loyiha bo‘yicha daraxt qilib ko‘rish: fork va bola sessiyalar otasi ostida, oxirgi faollik vaqti, eng yangisi tepada | `crosstalk list [claude\|antigravity\|codex] [loyiha]` |
+| Sessiyalarni loyiha bo‘yicha daraxt qilib ko‘rish: fork va bola sessiyalar otasi ostida, oxirgi faollik vaqti, eng yangisi tepada | `crosstalk list [claude\|antigravity\|codex\|opencode\|hermes] [loyiha]` |
 | Claude’ga yozish | `crosstalk send claude <sessiya-ID-yoki-nomi> '<xabar>'` |
 | Antigravity’ga yozish | `crosstalk send antigravity <suhbat-ID-yoki-nomi> '<xabar>'` |
+| OpenCode yoki Hermes’ga yozish (terminal sessiyasi fonda davom etadi, javob sizga qaytadi) | `crosstalk send opencode\|hermes <ID> '<xabar>'` |
 | Codex’ga yozish | `crosstalk send codex <chat-ID-yoki-nomi> '<xabar>'` |
 | Chat xonasidagi odamga yozish | `crosstalk send user '<xabar>'` |
 | Aynan yuborilgan xabarning javobini buyruq natijasida olish | `crosstalk send --wait 120 antigravity\|codex <ID> '<xabar>'` |

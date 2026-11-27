@@ -8,7 +8,7 @@
 <style>
 :root {
   --bg: #f7f7f5; --panel: #ffffff; --line: #e6e5e1; --hover: #efeeea; --text: #1d1d1b; --muted: #74726c;
-  --claude: #d97757; --antigravity: #4c8df6; --codex: #23a8b5; --user: #5b5a55; --busy: #e0a100; --ok: #2e9e5b; --waiting: #8b6cf6;
+  --claude: #d97757; --antigravity: #4c8df6; --codex: #23a8b5; --opencode: #8a8f98; --hermes: #b0874f; --user: #5b5a55; --busy: #e0a100; --ok: #2e9e5b; --waiting: #8b6cf6;
   --bubble: #ffffff; --mine: #1d1d1b; --mine-text: #fafaf8; --error: #c4372c; --code: #f0efeb;
   --font: ui-sans-serif, -apple-system, "SF Pro Text", "Inter", system-ui, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, monospace;
@@ -164,11 +164,11 @@ button.send:disabled { opacity: .35; cursor: default; }
 </main>
 <script>
 const TOKEN = location.hash.slice(1);
-const APPS = ['claude', 'antigravity', 'codex'];
-const COLOR = { claude: 'var(--claude)', antigravity: 'var(--antigravity)', codex: 'var(--codex)', user: 'var(--user)' };
-const LABEL = { claude: 'Claude', antigravity: 'Antigravity', codex: 'Codex', terminal: 'Terminal', user: 'You' };
+const APPS = ['claude', 'antigravity', 'codex', 'opencode', 'hermes'];
+const COLOR = { claude: 'var(--claude)', antigravity: 'var(--antigravity)', codex: 'var(--codex)', opencode: 'var(--opencode)', hermes: 'var(--hermes)', user: 'var(--user)' };
+const LABEL = { claude: 'Claude', antigravity: 'Antigravity', codex: 'Codex', opencode: 'OpenCode', hermes: 'Hermes', terminal: 'Terminal', user: 'You' };
 const STATE = { idle: 'Ready', busy: 'Working', waiting: 'Waiting for you', open: 'Open', closed: 'Not running' };
-const INITIAL = { claude: 'C', antigravity: 'A', codex: 'Cx', terminal: '>', user: 'Y' };
+const INITIAL = { claude: 'C', antigravity: 'A', codex: 'Cx', opencode: 'O', hermes: 'H', terminal: '>', user: 'Y' };
 const DELIVERY = { held: 'Held by Claude', queued: 'Queued' };
 const RECENT = 3 * 864e5; // trees with activity in the last 3 days start expanded
 const $ = (id) => document.getElementById(id);

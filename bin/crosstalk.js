@@ -3,8 +3,6 @@ import { lstatSync, mkdirSync, readFileSync, rmSync, symlinkSync } from 'node:fs
 import { homedir } from 'node:os';
 import { basename, dirname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as antigravity from '../lib/antigravity.js';
-import * as codex from '../lib/codex.js';
 import * as core from '../lib/core.js';
 import * as log from '../lib/log.js';
 import * as mail from '../lib/mail.js';
@@ -25,7 +23,7 @@ const HELP = `crosstalk ${VERSION}: let Claude, Antigravity, Codex and you messa
   crosstalk read <app> <target> [-n 10] [--start K]  what you have not read yet (newest n), or n from message K
   crosstalk mail join [--cwd DIR] · who · watch   Agent Mail: link this session to a project mailbox; ring sessions on new mail
   crosstalk list --json · history <app> <target> [-n 60] [--start K] · send --json   the same, as JSON for programs
-  crosstalk status antigravity|codex [target]    idle, busy or waiting for the user
+  crosstalk status <app> [target]                idle, busy or waiting for the user
   crosstalk ui [--port 4477] [--no-open]         chat window: open any session, read it, write in it
   crosstalk log [-n 20]                          recent messages
   crosstalk whoami                               who crosstalk thinks is sending
@@ -38,6 +36,8 @@ const SKILL_LINKS = [
   join(homedir(), '.claude', 'skills', 'crosstalk'),
   join(homedir(), '.gemini', 'config', 'skills', 'crosstalk'),
   join(homedir(), '.codex', 'skills', 'crosstalk'),
+  join(homedir(), '.config', 'opencode', 'skills', 'crosstalk'),
+  join(homedir(), '.hermes', 'skills', 'crosstalk'),
 ];
 
 // Options are read until the message text starts, so text like "fix the --port flag" stays intact.
@@ -88,7 +88,7 @@ async function main() {
   const [cmd, ...args] = words;
   switch (cmd) {
     case 'list': {
-      const app = ['claude', 'antigravity', 'codex'].includes(args[0]) ? args[0] : null;
+      const app = core.APP_NAMES.includes(args[0]) ? args[0] : null;
       const project = (app ? args[1] : args[0])?.toLowerCase();
       const all = await core.list(app);
       if (opt.json) {
@@ -124,13 +124,13 @@ async function main() {
       const target = agent === 'user' ? null : rest.shift();
       let text = rest.join(' ');
       if (text === '-') text = readStdin();
-      if (!agent || (agent !== 'user' && !target) || !text) throw new Error('Usage: crosstalk send <claude|antigravity|codex|user> [target] <text>');
+      if (!agent || (agent !== 'user' && !target) || !text) throw new Error(`Usage: crosstalk send <${core.APP_NAMES.join('|')}|user> [target] <text>`);
       const from = core.whoami(opt.from);
       const wait = opt.wait ?? 0;
       if (!wait && agent !== 'user' && from.agent === 'antigravity' && !from.id) {
         throw new Error('Antigravity conversation ID unavailable. Use --from <your conversation ID> so replies reach you.');
       }
-      if (wait && !['antigravity', 'codex'].includes(agent)) throw new Error('--wait works for Antigravity and Codex only.');
+      if (wait && (agent === 'claude' || agent === 'user')) throw new Error('--wait does not apply to Claude: its sessions answer you directly.');
       const sent = await core.send(agent, target, text, from, wait > 0);
       if (opt.json && !wait) return console.log(JSON.stringify({ to: sent.to, delivery: sent.delivery ?? null }));
       const { to, delivery } = sent;
@@ -146,7 +146,7 @@ async function main() {
       const [agent, ...rest] = args;
       let text = rest.join(' ');
       if (text === '-') text = readStdin();
-      if (!['claude', 'antigravity', 'codex'].includes(agent) || !text) throw new Error('Usage: crosstalk new claude|antigravity|codex [--cli] [--cwd DIR] [--wait] <first message>');
+      if (!core.APP_NAMES.includes(agent) || !text) throw new Error(`Usage: crosstalk new ${core.APP_NAMES.join('|')} [--cli] [--cwd DIR] [--wait] <first message>`);
       const wait = opt.wait ?? 0;
       const sent = await core.create(agent, text, { cli: opt.surface === 'cli', cwd: opt.cwd, sender: core.whoami(opt.from), waiting: wait > 0 });
       const { to } = sent;
@@ -161,7 +161,7 @@ async function main() {
     case 'unarchive':
     case 'delete': {
       const [agent, target, ...extra] = args;
-      if (!agent || !target || extra.length) throw new Error(`Usage: crosstalk ${cmd} claude|antigravity|codex <id>${cmd === 'delete' ? ' --permanent' : ''} [--force]`);
+      if (!agent || !target || extra.length) throw new Error(`Usage: crosstalk ${cmd} ${core.APP_NAMES.join('|')} <id>${cmd === 'delete' ? ' --permanent' : ''} [--force]`);
       if (cmd === 'delete' && !opt.permanent) throw new Error('delete cannot be undone: add --permanent. To hide a session but keep it, use: crosstalk archive');
       const row = await core.manage(cmd, agent, target, { force: opt.force, actor: core.whoami(opt.from) });
       console.log(`${cmd}d ${agent} ${JSON.stringify(clean(row.name))} (${row.id})`);
@@ -231,14 +231,14 @@ async function main() {
       return;
     }
     case 'status': {
-      const app = { antigravity, codex }[args[0]];
-      if (!app) throw new Error('Usage: crosstalk status antigravity|codex [target]');
+      const app = args[0] !== 'claude' && core.APPS[args[0]];
+      if (!app) throw new Error(`Usage: crosstalk status ${core.APP_NAMES.filter((a) => a !== 'claude').join('|')} [target]`);
       const s = await app.status(args[1]);
       console.log(`${s.status} | ${clean(s.name)} | ${s.id || '(new)'}${s.note ? `\n${clean(s.note)}` : ''}`);
       return;
     }
     case 'open': {
-      const app = { antigravity, codex }[args[0]];
+      const app = core.APPS[args[0]]?.open && core.APPS[args[0]];
       if (!app) throw new Error('Usage: crosstalk open antigravity|codex');
       console.log(await app.open());
       return;

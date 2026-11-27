@@ -1,4 +1,4 @@
-# crosstalk: let Claude, Antigravity and Codex talk to each other
+# crosstalk: let Claude, Antigravity, Codex, OpenCode and Hermes talk to each other
 
 **crosstalk** connects AI coding agents running on your Mac so they can message each other, live, in their
 own desktop windows. A Claude desktop (Claude Code) session can hand a task to a Google Antigravity (Gemini)
@@ -27,7 +27,7 @@ flowchart LR
 
 ```bash
 npm install -g github:khan-umirzakoff/agent-crosstalk
-crosstalk install              # adds the crosstalk skill to Claude, Antigravity and Codex
+crosstalk install              # adds the crosstalk skill to Claude, Antigravity, Codex, OpenCode and Hermes
 ```
 
 Nothing else is required, and no app is restarted: crosstalk uses each app's own interfaces. Claude: `claude agents`
@@ -133,6 +133,11 @@ Agents are told to stop when the task is done (no "thanks" ping-pong) and to mak
 - **States** come from `claude agents --json`, Antigravity's conversation service and Codex App Server.
 - **The chat room** is a local web page served on `127.0.0.1`. Every message crosstalk carries is appended to
   `~/.crosstalk/log.jsonl` and streamed to the page.
+- **OpenCode** sessions are listed from OpenCode's session database (read-only), read with `opencode export`,
+  continued and started with `opencode run`, and deleted with `opencode session delete`.
+  `CROSSTALK_OPENCODE_MODEL` sets the model for runs crosstalk starts.
+- **Hermes** sessions (desktop app and command line) are listed and read from Hermes's session store (read-only),
+  continued and started with `hermes chat -Q`, and deleted with `hermes sessions delete`.
 
 ## Agent Mail: inboxes, threads and file reservations
 
