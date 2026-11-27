@@ -553,12 +553,13 @@ if (!TOKEN) {
   select(sel.key || 'log');
   if (matchMedia('(max-width: 760px)').matches) document.body.classList.remove('in-chat');
   refresh();
-  setInterval(() => document.hidden || refresh(), 10000);
+  setInterval(() => document.hidden || refresh(), 60000); // a fallback: the daemon announces changes
   setInterval(() => { if (!document.hidden && chat.key && sel.key === chat.key && !chat.key.endsWith('|new')) loadChat(); }, 5000);
   const ev = new EventSource('/events?token=' + encodeURIComponent(TOKEN));
   const logged = new Set(); // a reconnect replays the backlog
   ev.onmessage = (e) => { if (!logged.has(e.data)) { logged.add(e.data); addLog(JSON.parse(e.data)); } };
   ev.onopen = () => setTimeout(() => { live = true; $('log').setAttribute('aria-live', 'polite'); }, 1000); // animate and announce only new messages
+  ev.addEventListener('state', () => document.hidden || refresh());
   ev.onerror = () => refresh();
 }
 </script>

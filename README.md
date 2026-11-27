@@ -58,7 +58,8 @@ crosstalk send antigravity 'API review' 'Check src/api for missing auth checks'
 crosstalk send claude 'billing refactor' 'Antigravity found 3 issues, see notes/review.md'
 crosstalk status antigravity current                   # busy or idle
 crosstalk read antigravity current -n 5                # what you have not read yet, newest 5
-crosstalk ui                                           # open the chat room
+crosstalk daemon                                       # keep lists fresh, ring Agent Mail, serve the window
+crosstalk ui                                           # open the chat window (starts the daemon if none runs)
 ```
 
 Each message starts with one plain line, for example
@@ -80,7 +81,8 @@ so the receiver knows who wrote, from which session, and how to answer.
 | `crosstalk read claude\|antigravity\|codex <target> [-n 10] [--start K]` | The messages the reader has not read yet (newest n), numbered from 1, with a ready command for the ones above; a reread with nothing new costs one line. `--start K` reads n from message K |
 | `crosstalk status antigravity\|codex [target]` | Whether the agent is idle, busy or waiting |
 | `crosstalk send --wait [sec] antigravity\|codex <target> <text>` | Send and print the reply to this specific message |
-| `crosstalk ui [--port 4477]` | Local chat window: every session in a tree, its full chat, and the agent-to-agent log |
+| `crosstalk daemon [--port 4477]` | One long-running process: every app's session list kept fresh in memory, one Codex app-server kept open, Agent Mail rings, and the chat window's API with live change events |
+| `crosstalk ui [--port 4477]` | Opens the chat window of the running daemon, or starts one: every session in a tree, its full chat, and the agent-to-agent log |
 | `crosstalk log [-n 20]` | Recent messages in the terminal |
 | `crosstalk install` / `uninstall` | Add or remove the agent skill |
 

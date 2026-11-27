@@ -81,7 +81,7 @@ test('the room refuses other hosts and requests without its token', async () => 
   await once(free, 'listening');
   const { port } = free.address();
   free.close();
-  const server = await serve(port, false);
+  const server = await serve(port, false, { live: false });
   const status = (path, headers = {}) =>
     new Promise((ok) => request({ host: '127.0.0.1', port, path, headers }, (res) => ok(res.statusCode)).end());
   try {

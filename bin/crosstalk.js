@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execFile } from 'node:child_process';
 import { lstatSync, mkdirSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, join, resolve as resolvePath } from 'node:path';
@@ -24,7 +25,8 @@ const HELP = `crosstalk ${VERSION}: let Claude, Antigravity, Codex and you messa
   crosstalk mail join [--cwd DIR] · who · watch   Agent Mail: link this session to a project mailbox; ring sessions on new mail
   crosstalk list --json · history <app> <target> [-n 60] [--start K] · send --json   the same, as JSON for programs
   crosstalk status <app> [target]                idle, busy or waiting for the user
-  crosstalk ui [--port 4477] [--no-open]         chat window: open any session, read it, write in it
+  crosstalk daemon [--port 4477]                 keep lists fresh, ring Agent Mail, serve the chat window
+  crosstalk ui [--port 4477] [--no-open]         open the chat window (starts the daemon if none runs)
   crosstalk log [-n 20]                          recent messages
   crosstalk whoami                               who crosstalk thinks is sending
   crosstalk install | uninstall                  add or remove the agent skill
@@ -184,14 +186,9 @@ async function main() {
         return;
       }
       if (sub === 'watch') {
-        const q = core.shellQuote;
         console.log(opt.once ? 'Ringing for mail delivered so far…' : 'Ringing sessions when mail arrives (Ctrl-C to stop)…');
         await mail.watch(async (m, e) => {
-          const sender = { agent: 'mail', name: `Agent Mail (${e.from})`, reply: `am mail reply -p ${q(m.project)} --from ${m.agent} --message-id ${e.message_id} -b '<reply>'` };
-          const text = `New mail for ${m.agent} from ${e.from}: ${JSON.stringify(e.subject)}${e.importance && e.importance !== 'normal' ? ` [${e.importance}]` : ''}`
-            + `${e.ack_required ? ', and it asks for an acknowledgement' : ''}.\nRead it: am mail inbox -p ${q(m.project)} --agent ${m.agent} --include-bodies`
-            + `${e.ack_required ? `\nAcknowledge: am mail ack -p ${q(m.project)} --agent ${m.agent} ${e.message_id}` : ''}`;
-          const { delivery } = await core.send(m.app, m.session, text, sender, false, { replyBack: true });
+          const { delivery } = await core.ringMail(m, e);
           console.log(`rang ${m.agent} (${m.app}) for mail ${e.message_id}${delivery ? ` · ${delivery}` : ''}`);
         }, { once: opt.once, onError: (m, err) => console.error(`${m.agent}: ${err.message}`) });
         return;
@@ -243,9 +240,17 @@ async function main() {
       console.log(await app.open());
       return;
     }
-    case 'ui': {
-      const { serve } = await import('../lib/ui.js');
-      await serve(opt.port, opt.open);
+    case 'ui':
+    case 'daemon': {
+      const ui = await import('../lib/ui.js');
+      const live = await ui.running();
+      if (live) {
+        // One daemon serves every window: open the running one instead of starting another.
+        console.log(`crosstalk daemon already runs: ${live.link}`);
+        if (cmd === 'ui' && opt.open) execFile('open', [live.link]);
+        return;
+      }
+      await ui.serve(opt.port, cmd === 'ui' && opt.open);
       return;
     }
     case 'log':
