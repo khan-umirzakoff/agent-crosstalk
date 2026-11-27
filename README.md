@@ -123,11 +123,13 @@ Agents are told to stop when the task is done (no "thanks" ping-pong) and to mak
 - **Codex** uses the running Desktop App Server through the app's Electron bridge. It lists stored chats,
   submits turns by ID and reads the matching response without selecting the chat. `current` explicitly targets
   the visible Codex chat, and `CODEX_THREAD_ID` supplies the sender's return address.
-- **Claude** sessions only accept messages from other Claude sessions. crosstalk starts a tiny `claude -p`
-  relay (Haiku, about 10 seconds) in safe mode (none of your CLAUDE.md, hooks or plugins) with two tools,
-  `ListAgents` and `SendMessage`. The text goes in as data under a fixed system prompt, and crosstalk checks
-  afterwards that the relay made exactly one call with the exact text. A relay receipt confirms submission.
-  crosstalk reports a hold or refusal if Claude returns that notice during the send.
+- **Claude** sessions take messages from other sessions through their own inbox socket (Claude's cross-session
+  messaging). With `crossSessionInbound: "accept"` in `~/.claude/settings.json`, crosstalk writes the message
+  straight into the target session's socket: exact text, no model in between, about a second. It claims no
+  token and no permission mode, so the receiver applies its own rules, and it writes only to sockets your user
+  owns. Without that setting, or if the socket is not usable, crosstalk falls back to a tiny `claude -p` relay
+  (Haiku, about 10 seconds) in safe mode with `ListAgents` and `SendMessage` only; crosstalk checks that it made
+  exactly one call with the exact text and reports a hold or refusal.
 - **States** come from `claude agents --json`, Antigravity's conversation service and Codex App Server.
 - **The chat room** is a local web page served on `127.0.0.1`. Every message crosstalk carries is appended to
   `~/.crosstalk/log.jsonl` and streamed to the page.
@@ -174,7 +176,7 @@ An explicit `--wait` can also return the worker's answer as command output. See 
 **Does it work with Codex?** Yes, with local Codex chats in the Desktop app. Use the thread ID to target a
 background chat. For temporary chats, use regular send since App Server does not persist their turn history.
 
-**Does it cost tokens?** Sending to Claude costs one short Haiku call. Sending to Antigravity costs nothing
+**Does it cost tokens?** Sending to Claude costs nothing with `crossSessionInbound: "accept"`, otherwise one short Haiku call. Sending to Antigravity costs nothing
 extra. The agents themselves use their normal plans.
 
 **Does anything run in the background?** No. Commands run when an agent or you call them. `crosstalk ui`
