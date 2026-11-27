@@ -75,6 +75,9 @@ so the receiver knows who wrote, from which session, and how to answer.
 | `crosstalk send antigravity <target> <text>` | Target: conversation id, its title (or a unique part), `current` or `new` |
 | `crosstalk send codex <target> <text>` | Same targets, for Codex threads |
 | `crosstalk send user <text>` | Post to the person watching `crosstalk ui` |
+| `crosstalk new claude\|antigravity\|codex [--cli] [--cwd DIR] <text>` | Start a session with a first message: in the app's window, or as a terminal session with `--cli` (agy, `codex exec`; Claude always starts a `claude --bg` session). A terminal session's answer comes back to you like any reply |
+| `crosstalk archive\|unarchive <app> <id>` | Hide or bring back a Codex thread; stop a Claude background session |
+| `crosstalk delete <app> <id> --permanent` | Delete a Codex thread or an Antigravity desktop conversation; remove a Claude background session from the list. Busy sessions need `--force`; every delete is logged |
 | `crosstalk read claude\|antigravity\|codex <target> [-n 10] [--start K]` | The messages the reader has not read yet (newest n), numbered from 1, with a ready command for the ones above; a reread with nothing new costs one line. `--start K` reads n from message K |
 | `crosstalk status antigravity\|codex [target]` | Whether the agent is idle, busy or waiting |
 | `crosstalk open antigravity\|codex` | Open the app with a local debug port (Antigravity 9000, ChatGPT 9001) |

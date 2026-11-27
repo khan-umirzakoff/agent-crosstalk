@@ -18,6 +18,9 @@ const HELP = `crosstalk ${VERSION}: let Claude, Antigravity, Codex and you messa
   crosstalk send codex <target> <text>           target: thread id, its title, current or new
   --wait [sec] waits for the reply to a send to Antigravity/Codex and prints it (1800 s if omitted)
   crosstalk send user <text>                     post to the person watching \`crosstalk ui\`
+  crosstalk new <app> [--cli] [--cwd DIR] <text>  start a session: in the app, or in a terminal with --cli (Claude: always a background session)
+  crosstalk archive|unarchive <app> <id>         hide or bring back a session by its id (Codex; Claude background sessions: stop)
+  crosstalk delete <app> <id> --permanent        delete it (Codex, Antigravity desktop; Claude background: remove from the list)
   crosstalk read <app> <target> [-n 10] [--start K]  what you have not read yet (newest n), or n from message K
   crosstalk status antigravity|codex [target]    idle, busy or waiting for the user
   crosstalk open antigravity|codex               optional: reopen the app with a debug port (live receipts, idle Codex desktop threads)
@@ -37,12 +40,14 @@ const SKILL_LINKS = [
 
 // Options are read until the message text starts, so text like "fix the --port flag" stays intact.
 function parse(argv) {
-  const opt = { from: null, port: 4477, n: null, start: null, open: true, wait: null, surface: null };
+  const opt = { from: null, port: 4477, n: null, start: null, open: true, wait: null, surface: null, cwd: null, permanent: false, force: false };
   const words = [];
-  const textStarts = () => words[0] === 'send' && words.length >= (words[1] === 'user' ? 2 : 3);
+  const textStarts = () => (words[0] === 'send' && words.length >= (words[1] === 'user' ? 2 : 3)) || (words[0] === 'new' && words.length >= 2);
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--' || textStarts()) {
+    // `new <app>` still takes its own flags before the text: crosstalk new codex --cli --cwd DIR hi
+    const newFlag = words[0] === 'new' && /^--(cli|desktop|cwd|wait|no-wait|from)$/.test(a);
+    if (a === '--' || (textStarts() && !newFlag)) {
       words.push(...argv.slice(a === '--' ? i + 1 : i));
       break;
     }
@@ -52,6 +57,9 @@ function parse(argv) {
     else if (a === '--start') opt.start = Number(argv[++i]);
     else if (a === '--no-open') opt.open = false;
     else if (a === '--desktop' || a === '--cli') opt.surface = a.slice(2);
+    else if (a === '--cwd') opt.cwd = argv[++i];
+    else if (a === '--permanent') opt.permanent = true;
+    else if (a === '--force') opt.force = true;
     else if (a === '--wait') opt.wait = /^\d+$/.test(argv[i + 1] || '') ? Number(argv[++i]) : 1800;
     else if (a === '--no-wait') opt.wait = 0;
     else if (a === '-h' || a === '--help') return { opt, words: ['help'] };
@@ -120,6 +128,31 @@ async function main() {
       else if (delivery === 'queued') console.log(`queued to ${recipient}${wait ? ', waiting for the answer' : ''}`);
       else console.log(`sent to ${recipient}${wait ? ', waiting for the answer' : ''}`);
       if (wait) console.log(`\n${clean(await core.waitReply(sent, wait * 1000))}`);
+      return;
+    }
+    case 'new': {
+      const [agent, ...rest] = args;
+      let text = rest.join(' ');
+      if (text === '-') text = readStdin();
+      if (!['claude', 'antigravity', 'codex'].includes(agent) || !text) throw new Error('Usage: crosstalk new claude|antigravity|codex [--cli] [--cwd DIR] [--wait] <first message>');
+      const wait = opt.wait ?? 0;
+      const sent = await core.create(agent, text, { cli: opt.surface === 'cli', cwd: opt.cwd, sender: core.whoami(opt.from), waiting: wait > 0 });
+      const { to } = sent;
+      console.log(`started ${to.agent} ${JSON.stringify(clean(to.name))}${to.id ? ` (${to.id})` : ' (its id appears in crosstalk list once it starts)'}`);
+      if (wait) console.log(`\n${clean(await core.waitReply(sent, wait * 1000))}`);
+      return;
+    }
+    case '__run': // internal: follows a headless terminal-session run started by send or new
+      await core.finishRun(args[0]);
+      return;
+    case 'archive':
+    case 'unarchive':
+    case 'delete': {
+      const [agent, target, ...extra] = args;
+      if (!agent || !target || extra.length) throw new Error(`Usage: crosstalk ${cmd} claude|antigravity|codex <id>${cmd === 'delete' ? ' --permanent' : ''} [--force]`);
+      if (cmd === 'delete' && !opt.permanent) throw new Error('delete cannot be undone: add --permanent. To hide a session but keep it, use: crosstalk archive');
+      const row = await core.manage(cmd, agent, target, { force: opt.force, actor: core.whoami(opt.from) });
+      console.log(`${cmd}d ${agent} ${JSON.stringify(clean(row.name))} (${row.id})`);
       return;
     }
     case 'read': {

@@ -174,3 +174,25 @@ test('history drops the crosstalk header but keeps the sender; the person in the
   assert.match(codex.from, /Codex/);
   assert.deepEqual(core.unstamp({ role: 'claude', text: '[crosstalk] From x. Reply with: y\nHi' }).role, 'claude');
 });
+
+test('archive and delete take only an exact id, never a title or "current"', async () => {
+  for (const target of ['fix login', 'current', 'fix']) {
+    await assert.rejects(core.manage('delete', 'codex', target, { force: true }), /exact id/);
+  }
+  await assert.rejects(core.manage('archive', 'antigravity', '01a21a47-9ffd-7260-b535-bbef10b04a38'), /cannot archive antigravity/);
+});
+
+test('new keeps its flags after the app name and checks the folder before starting anything', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const bin = new URL('../bin/crosstalk.js', import.meta.url).pathname;
+  assert.throws(() => execFileSync(process.execPath, [bin, 'new', 'codex', '--cli', '--cwd', '/no/such/folder', 'hi'], { stdio: 'pipe', env: process.env }),
+    (e) => /No folder \/no\/such\/folder/.test(String(e.stderr)));
+});
+
+test('the internal runner refuses files that crosstalk did not write', async () => {
+  const { existsSync, writeFileSync } = await import('node:fs');
+  const decoy = join(process.env.CROSSTALK_HOME, 'decoy.json');
+  writeFileSync(decoy, JSON.stringify({ kind: 'agy', cmd: 'rm', args: ['-rf', '/'], out: decoy }));
+  await assert.rejects(core.finishRun(decoy), /Not a crosstalk run/);
+  assert.ok(existsSync(decoy));
+});
