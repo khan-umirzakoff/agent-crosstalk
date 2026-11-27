@@ -30,10 +30,9 @@ npm install -g github:khan-umirzakoff/agent-crosstalk
 crosstalk install              # adds the crosstalk skill to Claude, Antigravity and Codex
 ```
 
-Nothing else is required: crosstalk reads each app's own files and uses its official commands (`codex app-server`,
-`codex queue`, `codex exec`, Antigravity's bundled `agentapi`, `agy`). Optional, for live receipts and starting an idle
-Codex desktop thread right away: `crosstalk open codex` restarts the ChatGPT app with a local debug port. Antigravity
-needs nothing: crosstalk talks to the running app's language server, the way its own window does.
+Nothing else is required, and no app is restarted: crosstalk uses each app's own interfaces. Claude: `claude agents`
+and each session's inbox socket. Antigravity: the running app's language server (the calls its own window makes) and
+`agy`. Codex: `codex app-server`, `codex queue` and `codex exec`, plus `codex://` links that have the app open a thread.
 
 Requirements: macOS, Node.js 22 or newer, a recent [Claude Code](https://claude.com/claude-code) CLI with
 `claude agents --json` (tested with 2.1.328), [Google Antigravity](https://antigravity.google) and, for Codex,
@@ -80,7 +79,6 @@ so the receiver knows who wrote, from which session, and how to answer.
 | `crosstalk delete <app> <id> --permanent` | Delete a Codex thread or an Antigravity desktop conversation; remove a Claude background session from the list. Busy sessions need `--force`; every delete is logged |
 | `crosstalk read claude\|antigravity\|codex <target> [-n 10] [--start K]` | The messages the reader has not read yet (newest n), numbered from 1, with a ready command for the ones above; a reread with nothing new costs one line. `--start K` reads n from message K |
 | `crosstalk status antigravity\|codex [target]` | Whether the agent is idle, busy or waiting |
-| `crosstalk open codex` | Optional: reopen the ChatGPT app with a local debug port (9001) to start idle desktop threads right away |
 | `crosstalk send --wait [sec] antigravity\|codex <target> <text>` | Send and print the reply to this specific message |
 | `crosstalk ui [--port 4477]` | Local chat window: every session in a tree, its full chat, and the agent-to-agent log |
 | `crosstalk log [-n 20]` | Recent messages in the terminal |
@@ -117,12 +115,14 @@ Agents are told to stop when the task is done (no "thanks" ping-pong) and to mak
 
 ## How it works
 
-- **Antigravity** combines the local Desktop conversation index with the visible list. Crosstalk calls the
-  running Desktop client's conversation service by ID via CDP. The shell's `ANTIGRAVITY_CONVERSATION_ID`
-  supplies the return address, with `--from <id>` available when the shell lacks it. `new` uses the app composer.
-- **Codex** uses the running Desktop App Server through the app's Electron bridge. It lists stored chats,
-  submits turns by ID and reads the matching response without selecting the chat. `current` explicitly targets
-  the visible Codex chat, and `CODEX_THREAD_ID` supplies the sender's return address.
+- **Antigravity** desktop conversations go through the running app's language server: the conversation list with live
+  status, structured steps with times, `SendUserCascadeMessage` with the conversation's own model settings,
+  `StartCascade`, `WaitForConversationFullyIdle` and `DeleteCascadeTrajectory`. agy conversations are read from their
+  files and continued with `agy --conversation`. `ANTIGRAVITY_CONVERSATION_ID` supplies the return address.
+- **Codex** lists, reads, archives and deletes threads through `codex app-server`. The desktop app owns its threads:
+  a message goes into the thread's queue (`codex queue`) and `open -g codex://threads/<id>` has the app open the
+  thread in the background, which runs it now or after the turn in progress. A new desktop thread's first turn runs in
+  crosstalk's own app server; later messages go through the queue. Terminal threads continue with `codex exec resume`.
 - **Claude** sessions take messages from other sessions through their own inbox socket (Claude's cross-session
   messaging). With `crossSessionInbound: "accept"` in `~/.claude/settings.json`, crosstalk writes the message
   straight into the target session's socket: exact text, no model in between, about a second. It claims no
@@ -136,8 +136,8 @@ Agents are told to stop when the task is done (no "thanks" ping-pong) and to mak
 
 ## Security
 
-- The Antigravity and Codex debug ports listen on `127.0.0.1`. Local programs with access to those ports can drive
-  the apps. Quit and reopen the apps normally to close the ports.
+- No app runs with a debug port. crosstalk reaches Antigravity's language server with the token the app writes to its
+  own address file, and Claude sessions only through sockets your user owns.
 - The chat room binds to `127.0.0.1`, checks the `Host` header, refuses to be framed and needs a per-run token
   that is only in the link `crosstalk ui` prints (after `#`), so other web pages and accounts cannot use it.
 - A message from another agent is treated as a teammate's request, never as your approval, even when its
@@ -194,7 +194,7 @@ and the exact Crosstalk error when opening an issue.
 
 ## Roadmap
 
-- More agents: Cursor, Windsurf, Gemini CLI, any app that exposes its chat to a local debug port.
+- More agents: OpenCode, Hermes, Cursor, Gemini CLI.
 
 ## License
 

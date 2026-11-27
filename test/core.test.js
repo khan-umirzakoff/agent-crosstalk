@@ -12,7 +12,6 @@ const log = await import('../lib/log.js');
 const { resolve } = await import('../lib/antigravity.js');
 const { checkRelay } = await import('../lib/claude.js');
 const { serve } = await import('../lib/ui.js');
-const { waitForReply } = await import('../lib/desktop.js');
 
 test('header tells the receiver who wrote, from where, and how to reply', () => {
   assert.equal(core.header({ agent: 'claude', name: 'API review' }), `[crosstalk] From Claude, session 'API review'. Reply with: crosstalk send claude 'API review' '<reply>'`);
@@ -93,16 +92,6 @@ test('the room refuses other hosts and requests without its token', async () => 
   } finally {
     server.close();
   }
-});
-
-test('--wait finishes when the adapter confirms this message has a reply', async () => {
-  const frames = [null, null, { reply: 'identical to the previous answer' }];
-  const options = { id: 'c1', app: 'Codex', timeoutMs: 200, intervalMs: 2 };
-  const got = await waitForReply(async () => frames.shift(), options);
-  assert.equal(got.reply, 'identical to the previous answer');
-  assert.equal(frames.length, 0);
-  await assert.rejects(waitForReply(async () => null, { ...options, timeoutMs: 12 }), /no confirmed reply/);
-  await assert.rejects(waitForReply(async () => { throw new Error('turn failed'); }, options), /turn failed/);
 });
 
 test('a Claude transcript keeps the user, other agents and Claude, not tools or system notes', async () => {

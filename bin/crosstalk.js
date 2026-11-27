@@ -24,7 +24,6 @@ const HELP = `crosstalk ${VERSION}: let Claude, Antigravity, Codex and you messa
   crosstalk read <app> <target> [-n 10] [--start K]  what you have not read yet (newest n), or n from message K
   crosstalk list --json · history <app> <target> [-n 60] [--start K] · send --json   the same, as JSON for programs
   crosstalk status antigravity|codex [target]    idle, busy or waiting for the user
-  crosstalk open codex                           optional: reopen ChatGPT with a debug port (starts idle Codex desktop threads right away)
   crosstalk ui [--port 4477] [--no-open]         chat window: open any session, read it, write in it
   crosstalk log [-n 20]                          recent messages
   crosstalk whoami                               who crosstalk thinks is sending

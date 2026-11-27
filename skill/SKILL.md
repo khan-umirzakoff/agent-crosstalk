@@ -30,7 +30,7 @@ Xabar matnini bir tirnoq ichiga oling. Uzun yoki ko‘p qatorli xabarni stdin or
 - Claude sessiyalari o‘zaro Claude’ning `SendMessage` vositasini ham ishlata oladi. Claude'ga xabar sessiyaning inbox socket'iga to'g'ridan-to'g'ri yoziladi (`crossSessionInbound: "accept"` bo'lsa): matn aynan o'zi, bir soniyada. Aks holda relay ishlatiladi: `submitted` relay xabarni topshirganini, `held` qabul qiluvchi uni ushlab qolganini bildiradi. Xabar ushlab qolinsa yoki rad etilsa, foydalanuvchiga holatni ayting. Qabul qilishni Claude’dagi `crossSessionInbound` sozlamasi boshqaradi.
 - Yuborishdan oldin sessiya holatini tekshiring. `idle` sessiya tayyor. `busy` agent ishlayapti, oddiy xabar navbatga tushishi mumkin. `waiting` sessiyada foydalanuvchi savoliga javob yoki tasdiq kutilayotganini bildiradi. Foydalanuvchi uchun berilgan savolni unga yetkazing. Xabarni ketma-ket qayta yuborish o‘rniga `crosstalk status <app> <ID>` orqali holatni tekshiring.
 - `crosstalk list` har bir sessiyaning qayerdaligini ko‘rsatadi: `desktop` (ilova oynasi), `cli` (terminal: agy, codex, claude), `exec` (bir martalik codex exec). Ikkalasiga ham yozish mumkin; faqat terminallarni ko‘rish uchun `--cli`, faqat ilovalarni ko‘rish uchun `--desktop`.
-- Ilovalarni qayta ochish shart emas. Faqat Codex desktop'dagi bo‘sh (`idle`) thread'ni darhol ishga tushirish yoki `current` uchun `crosstalk open codex|antigravity` kerak; busiz xabar thread navbatiga tushadi. Ilovani qayta ochish undagi ishni to‘xtatishi mumkin, shuning uchun buni foydalanuvchidan so‘rang.
+- Ilovalarni qayta ochish shart emas: crosstalk ularning o‘z interfeyslaridan foydalanadi. `current` — siz oxirgi yozgan desktop suhbat.
 
 ## Ish usullari
 
