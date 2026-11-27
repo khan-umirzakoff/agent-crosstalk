@@ -22,6 +22,7 @@ const HELP = `crosstalk ${VERSION}: let Claude, Antigravity, Codex and you messa
   crosstalk archive|unarchive <app> <id>         hide or bring back a session by its id (Codex; Claude background sessions: stop)
   crosstalk delete <app> <id> --permanent        delete it (Codex, Antigravity desktop; Claude background: remove from the list)
   crosstalk read <app> <target> [-n 10] [--start K]  what you have not read yet (newest n), or n from message K
+  crosstalk list --json · history <app> <target> [-n 60] [--start K] · send --json   the same, as JSON for programs
   crosstalk status antigravity|codex [target]    idle, busy or waiting for the user
   crosstalk open antigravity|codex               optional: reopen the app with a debug port (live receipts, idle Codex desktop threads)
   crosstalk ui [--port 4477] [--no-open]         chat window: open any session, read it, write in it
@@ -40,7 +41,7 @@ const SKILL_LINKS = [
 
 // Options are read until the message text starts, so text like "fix the --port flag" stays intact.
 function parse(argv) {
-  const opt = { from: null, port: 4477, n: null, start: null, open: true, wait: null, surface: null, cwd: null, permanent: false, force: false };
+  const opt = { from: null, port: 4477, n: null, start: null, open: true, wait: null, surface: null, cwd: null, permanent: false, force: false, json: false };
   const words = [];
   const textStarts = () => (words[0] === 'send' && words.length >= (words[1] === 'user' ? 2 : 3)) || (words[0] === 'new' && words.length >= 2);
   for (let i = 0; i < argv.length; i++) {
@@ -60,6 +61,7 @@ function parse(argv) {
     else if (a === '--cwd') opt.cwd = argv[++i];
     else if (a === '--permanent') opt.permanent = true;
     else if (a === '--force') opt.force = true;
+    else if (a === '--json') opt.json = true;
     else if (a === '--wait') opt.wait = /^\d+$/.test(argv[i + 1] || '') ? Number(argv[++i]) : 1800;
     else if (a === '--no-wait') opt.wait = 0;
     else if (a === '-h' || a === '--help') return { opt, words: ['help'] };
@@ -86,6 +88,12 @@ async function main() {
       const app = ['claude', 'antigravity', 'codex'].includes(args[0]) ? args[0] : null;
       const project = (app ? args[1] : args[0])?.toLowerCase();
       const all = await core.list(app);
+      if (opt.json) {
+        // Programs (the Paradev host, scripts) get the same tree as JSON: { app: [{ project, rows }] | { error } }.
+        const tree = (rows) => core.tree(rows.map(({ prior, ...r }) => r).filter((r) => !opt.surface || r.surface === opt.surface));
+        console.log(JSON.stringify(Object.fromEntries(Object.entries(all).map(([a, rows]) => [a, Array.isArray(rows) ? tree(rows) : rows]))));
+        return;
+      }
       for (const [agent, rows] of Object.entries(all)) {
         console.log(`${agent}:`);
         if (rows.error) {
@@ -121,6 +129,7 @@ async function main() {
       }
       if (wait && !['antigravity', 'codex'].includes(agent)) throw new Error('--wait works for Antigravity and Codex only.');
       const sent = await core.send(agent, target, text, from, wait > 0);
+      if (opt.json && !wait) return console.log(JSON.stringify({ to: sent.to, delivery: sent.delivery ?? null }));
       const { to, delivery } = sent;
       const recipient = `${to.agent} ${JSON.stringify(clean(to.name))}${to.id ? ` (${to.id})` : ''}`;
       if (delivery === 'held') console.log(`held by ${recipient}. Check Claude's inbound message settings.`);
@@ -153,6 +162,12 @@ async function main() {
       if (cmd === 'delete' && !opt.permanent) throw new Error('delete cannot be undone: add --permanent. To hide a session but keep it, use: crosstalk archive');
       const row = await core.manage(cmd, agent, target, { force: opt.force, actor: core.whoami(opt.from) });
       console.log(`${cmd}d ${agent} ${JSON.stringify(clean(row.name))} (${row.id})`);
+      return;
+    }
+    case 'history': {
+      // The plain history for programs: no read markers move, so a UI can show it as often as it likes.
+      const h = await core.history(args[0], args[1], { n: opt.n ?? 60, start: opt.start });
+      console.log(JSON.stringify({ id: h.id, name: h.name, total: h.total, messages: h.messages }));
       return;
     }
     case 'read': {
