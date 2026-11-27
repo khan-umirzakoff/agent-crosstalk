@@ -120,6 +120,21 @@ test('a Claude transcript keeps the user, other agents and Claude, not tools or 
   ]);
 });
 
+test('a growing transcript read in pieces parses like the whole file', async () => {
+  const { parseTranscript } = await import('../lib/claude.js');
+  const line = (o) => JSON.stringify(o);
+  const lines = [
+    line({ type: 'user', origin: { kind: 'human' }, message: { content: 'Hi' } }),
+    line({ type: 'assistant', message: { id: 'a', content: [{ type: 'text', text: 'One' }] } }),
+    line({ type: 'assistant', message: { id: 'a', content: [{ type: 'text', text: 'Two' }] } }),
+  ];
+  const out = [];
+  const state = { lastId: null };
+  parseTranscript(lines.slice(0, 2).join('\n') + '\n', out, state);
+  parseTranscript(lines[2] + '\n', out, state);
+  assert.deepEqual(out, parseTranscript(lines.join('\n')));
+});
+
 test('list tree: children under parents, newest first, loops cut', () => {
   const groups = core.tree([
     { id: 'a', project: 'crm', last: 1 },

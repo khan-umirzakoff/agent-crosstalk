@@ -133,8 +133,9 @@ Agents are told to stop when the task is done (no "thanks" ping-pong) and to mak
   (Haiku, about 10 seconds) in safe mode with `ListAgents` and `SendMessage` only; crosstalk checks that it made
   exactly one call with the exact text and reports a hold or refusal.
 - **States** come from `claude agents --json`, Antigravity's conversation service and Codex App Server.
-- **The chat room** is a local web page served on `127.0.0.1`. Every message crosstalk carries is appended to
-  `~/.crosstalk/log.jsonl` and streamed to the page.
+- **The chat room** is a local web page served on `127.0.0.1`, built with React, shadcn and assistant-ui from `web/`
+  (see `web/README.md`); the built files in `ui/` are committed, so nothing needs installing. Every message crosstalk
+  carries is appended to `~/.crosstalk/log.jsonl` and streamed to the page.
 - **OpenCode** sessions are listed from OpenCode's session database (read-only), read with `opencode export`,
   continued and started with `opencode run`, and deleted with `opencode session delete`.
   `CROSSTALK_OPENCODE_MODEL` sets the model for runs crosstalk starts.
