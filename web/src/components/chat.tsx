@@ -54,6 +54,7 @@ export function SessionChat({ agent, id, readOnly, opener, onCreated, bump }: { 
       const { to, delivery } = await api<{ to?: Party; delivery?: string }>("/api/send", { agent, target: id, text });
       if (delivery === "held") toast.warning("Claude held the message. Check its inbound message settings.");
       else if (delivery === "queued") toast("Queued");
+      else if (delivery === "woken") toast("Started in the background");
       if (fresh && to?.id) return onCreated(`${agent}|${to.id}`);
       setTimeout(load, 1500);
       setTimeout(load, 6000);

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { appendFileSync, mkdtempSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { createServer, request } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -251,6 +251,34 @@ esac
     await mail.watch(async (m, e) => rang.push(['again', e.message_id]), { once: true });
     assert.deepEqual(rang, [['BlueLake', '01a2', 2]]);
     assert.equal(mail.members()[0].cursor, 3);
+  } finally {
+    process.env.PATH = path;
+  }
+});
+
+test('a closed Claude session is woken in the background with its own settings, then stopped when idle', async () => {
+  const { wake, park } = await import('../lib/claude.js');
+  const dir = mkdtempSync(join(tmpdir(), 'ct-wake-'));
+  const logFile = join(dir, 'calls');
+  writeFileSync(join(dir, 'claude'), `#!/usr/bin/env node
+const fs = require('fs');
+const a = process.argv.slice(2);
+fs.appendFileSync(${JSON.stringify(logFile)}, JSON.stringify({ a, cwd: process.cwd() }) + '\\n');
+if (a[0] === '--bg') console.log('backgrounded · abc123');
+if (a[0] === 'agents') console.log(JSON.stringify([{ id: 'abc123', status: 'idle' }]));
+`, { mode: 0o755 });
+  const path = process.env.PATH;
+  process.env.PATH = `${dir}:${path}`;
+  try {
+    const target = { id: '11111111-1111-4111-8111-111111111111', name: 't', cwd: dir, wake: { model: 'm', effort: 'high', permissionMode: 'auto' } };
+    assert.equal(await wake(target, 'hello'), 'woken');
+    await park('abc123', { everyMs: 10 });
+    const calls = readFileSync(logFile, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+    const bg = calls.find((c) => c.a[0] === '--bg');
+    assert.deepEqual(bg.a, ['--bg', '--resume', target.id, '--model', 'm', '--effort', 'high', '--permission-mode', 'auto', 'hello']);
+    assert.equal(realpathSync(bg.cwd), realpathSync(dir));
+    assert.ok(calls.some((c) => c.a.join(' ') === 'stop abc123'));
+    await assert.rejects(wake({ ...target, cwd: join(dir, 'gone') }, 'x'), /no folder/);
   } finally {
     process.env.PATH = path;
   }

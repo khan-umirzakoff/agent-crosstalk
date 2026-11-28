@@ -117,7 +117,7 @@ async function main() {
         }
       }
       console.log('\nidle = ready · busy = working (a Claude session reads your message after its turn) · waiting = needs the user, do not answer for them'
-        + ' · closed = not running: read it, or ask the user to open it to message it\ndesktop = in the app\'s window · cli = a terminal session · ide = an editor · exec = a one-off run'
+        + ' · closed = not running: a message wakes it in the background\ndesktop = in the app\'s window · cli = a terminal session · ide = an editor · exec = a one-off run'
         + '\nTime = since its last activity, newest first. └ = started from the session above (fork, side session or subagent).');
       return;
     }
@@ -139,6 +139,7 @@ async function main() {
       const recipient = `${to.agent} ${JSON.stringify(clean(to.name))}${to.id ? ` (${to.id})` : ''}`;
       if (delivery === 'held') console.log(`held by ${recipient}. Check Claude's inbound message settings.`);
       else if (delivery === 'submitted') console.log(`submitted to ${recipient}. Delivery unconfirmed.`);
+      else if (delivery === 'woken') console.log(`woke ${recipient} in the background with your message; it stops again after its answer.`);
       else if (delivery === 'queued') console.log(`queued to ${recipient}${wait ? ', waiting for the answer' : ''}`);
       else console.log(`sent to ${recipient}${wait ? ', waiting for the answer' : ''}`);
       if (wait) console.log(`\n${clean(await core.waitReply(sent, wait * 1000))}`);
@@ -158,6 +159,10 @@ async function main() {
     }
     case '__run': // internal: follows a headless terminal-session run started by send or new
       await core.finishRun(args[0]);
+      return;
+    case '__park': // internal: stops a woken Claude session once its turn is done
+      if (!/^\w+$/.test(args[0] || '')) throw new Error('Not a crosstalk run.');
+      await core.APPS.claude.park(args[0]);
       return;
     case 'archive':
     case 'unarchive':

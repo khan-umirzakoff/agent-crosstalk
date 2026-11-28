@@ -99,7 +99,6 @@ function Main({ selected, find, opener, lines, bump, select, refresh }: { select
   const isLog = selected === "log" || !APPS.includes(agent as never);
 
   const readOnly = useMemo(() => {
-    if (r?.status === "closed") return "Not running · read-only";
     if (agent === "claude" && r?.status === "waiting") return `${r.note || "Waiting for you"} · answer in the Claude app`;
     return undefined;
   }, [agent, r?.status, r?.note]);
